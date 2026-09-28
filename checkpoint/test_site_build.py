@@ -131,6 +131,23 @@ class ChapterApiTests(unittest.TestCase):
 
 
 class ExportTests(unittest.TestCase):
+    def test_beginner_case_keeps_line_notes_aligned_with_source(self):
+        case = bank.public_payload()["industry_case"]
+        self.assertEqual(len(case["stages"]), 7)
+        self.assertIn("先只跟踪 A", case["reading_guide"])
+        for stage in case["stages"]:
+            self.assertEqual(
+                len(stage["line_notes"]), len(stage["code"].splitlines()),
+                stage["title"],
+            )
+            for field in ("input", "output", "trace"):
+                self.assertTrue(stage[field], (stage["title"], field))
+        self.assertEqual(
+            [(sample["id"], sample["valid_length"], sample["score"])
+             for sample in case["samples"]],
+            [("A", 4, 1), ("B", 2, 1), ("C", 2, 0), ("D", 2, 0)],
+        )
+
     def test_export_includes_only_intended_static_files_and_scoped_answers(self):
         with tempfile.TemporaryDirectory() as temp:
             site = Path(temp) / "checkpoint"

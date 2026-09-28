@@ -156,7 +156,37 @@ textarea.answer-field { min-height: 170px; resize: vertical; line-height: 1.7; }
 .case-eyebrow { display: block; color: var(--accent-deep); font: 700 10px var(--mono); letter-spacing: .07em; margin-bottom: 10px; }
 .industry-heading h3 { font: 500 25px/1.3 var(--serif); letter-spacing: -.03em; margin: 0 0 11px; }
 .industry-heading p { font-size: 12px; color: #48584e; margin: 0; line-height: 1.8; }
+.case-primer { padding: 22px 23px 24px; background: #fffdf8; border-top: 1px solid var(--line); }
+.case-primer h4, .case-steps-heading { font: 500 21px/1.4 var(--serif); margin: 0 0 12px; color: var(--ink); }
+.case-primer > p { font-size: 13px; line-height: 1.85; margin: 0 0 13px; color: #3b4d43; }
+.case-primer .case-primer-chain { padding: 13px 16px; background: #edf3e9; border-left: 3px solid var(--green); font-weight: 700; color: #27483b; }
+.case-terms { display: grid; grid-template-columns: minmax(115px, 150px) minmax(0, 1fr); margin: 18px 0; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.75; }
+.case-terms dt, .case-terms dd { margin: 0; padding: 10px 8px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.case-terms dt { font-weight: 750; color: #2f604a; }
+.case-terms dd { color: #425249; }
+.case-conditions { font-size: 12px; color: #47594e; line-height: 1.75; }
+.case-conditions summary { cursor: pointer; font-weight: 700; color: var(--accent-deep); }
+.case-conditions p { margin: 10px 0 0; }
 .case-steps { border-top: 1px solid var(--line); }
+.case-steps-heading { margin: 0; padding: 22px 23px 8px; }
+.case-stage { padding: 18px 23px 22px; border-bottom: 1px solid var(--line); background: #f7f5ee; min-width: 0; }
+.case-stage:nth-of-type(even) { background: #fdfbf5; }
+.case-stage-heading { font: 700 15px/1.6 var(--sans); color: #284e3e; margin: 0 0 8px; }
+.case-stage-explanation { color: #43584b; font-size: 12px; line-height: 1.8; margin: 0 0 12px; }
+.case-stage-route { display: grid; grid-template-columns: 65px minmax(0, 1fr); margin: 0 0 15px; gap: 0 9px; font-size: 12px; line-height: 1.75; }
+.case-stage-route dt, .case-stage-route dd { padding: 7px 0; border-bottom: 1px solid #dfe2d9; overflow-wrap: anywhere; }
+.case-stage-route dt { font-weight: 800; color: var(--accent-deep); }
+.case-stage-route dd { margin: 0; color: #30483a; }
+.case-source { border: 1px solid #c8d1c4; background: #fffdf8; padding: 0 14px; min-width: 0; }
+.case-source summary { cursor: pointer; padding: 13px 0; font-size: 12px; font-weight: 750; color: #2f5946; }
+.case-source summary:hover { color: var(--accent-deep); }
+.case-source .case-code { max-height: none; margin: 9px 0 13px; }
+.case-source .case-source-hint { color: #5b685e; font-size: 11px; line-height: 1.75; margin: 0 0 10px; }
+.case-line-notes { counter-reset: code-line; list-style: none; padding: 0; margin: 0 0 14px; }
+.case-line-notes li { counter-increment: code-line; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 8px; border-bottom: 1px solid #e2e7df; padding: 7px 0; color: #35483d; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.case-line-notes li::before { content: counter(code-line, decimal-leading-zero); font: 700 11px/1.8 var(--mono); color: #94562f; }
+.case-source .case-code-note { margin: 8px 0 15px; font-size: 11px; line-height: 1.75; color: #58675d; }
+.case-stage-next { font-size: 11px; font-weight: 700; color: var(--accent-deep); line-height: 1.65; margin: 16px 0 0; }
 .case-step { padding: 0 22px; border-bottom: 1px solid var(--line); }
 .case-step summary { padding: 14px 0; cursor: pointer; font-weight: 700; color: var(--ink); font-size: 13px; }
 .case-step summary:hover { color: var(--accent-deep); }
@@ -297,6 +327,13 @@ textarea.answer-field { min-height: 170px; resize: vertical; line-height: 1.7; }
   .code-editor-host .cm-editor { font-size: 12px; }
   .editor-help { align-items: start; }
   .industry-heading { padding: 18px; }
+  .case-primer, .case-stage { padding: 18px 16px; }
+  .case-steps-heading { padding: 20px 16px 6px; }
+  .case-terms { grid-template-columns: 1fr; }
+  .case-terms dt { padding-bottom: 1px; border-bottom: 0; }
+  .case-terms dd { padding-top: 0; }
+  .case-stage-route { grid-template-columns: 52px minmax(0, 1fr); }
+  .case-source { padding: 0 10px; }
   .case-step { padding: 0 17px; }
   .case-lab { padding: 19px 16px 21px; }
   .case-overview { grid-template-columns: 1fr; }

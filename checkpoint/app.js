@@ -732,25 +732,77 @@ function renderIndustryCase(caseData) {
   const header = element("div", "industry-heading");
   append(header, element("span", "case-eyebrow", `CASE / ${caseData.project.toUpperCase()} · ${caseData.commit}`),
     element("h3", "", caseData.title),
-    element("p", "", caseData.scope));
+    element("p", "", caseData.reading_guide || caseData.scope));
   section.append(header);
 
+  const primer = element("div", "case-primer");
+  append(primer,
+    element("h4", "", "先认清三件事，再跟着 A 走"),
+    element("p", "", "一条训练数据最初只有“问题”和“标准答案”；模型读问题后才生成回答。评分器比较“生成回答”和“标准答案”，给整条回答一个数。训练批次再把这个数放到回答末位，倒序计算每个位置的回报。"),
+    element("p", "case-primer-chain",
+      "原题与真值 → 生成回答 → 整条评分 → 末位奖励 → 每个位置的折扣回报"));
+  const terms = element("dl", "case-terms");
+  for (const [term, definition] of [
+    ["B=4、T=4", "B 是 4 条独立回答；T 是本页示意的 4 个回答槽位，不包含 prompt 的长度。"],
+    ["token / padding", "真实 token 是模型处理的 ID；本页“先算 / ， / #### /  4”只是示意分段。短回答在右侧补空位，空位不是模型说的话。"],
+    ["mask", "有效位置记 1，补空位记 0；B 行的 [1,1,0,0] 表示只看前两个位置。"],
+    ["DataProto", "verl 搬运一批样本的容器：batch 放响应 ID 和 mask 等张量，non_tensor_batch 放 data_source、ground_truth 等元数据。"],
+    ["score / reward / return", "score 是整条回答的评分；reward 是安放到回答位置上的奖励；return 是从该位置往后所有奖励的折扣和。三者不能当作同一个量。"],
+  ]) {
+    append(terms, element("dt", "", term), element("dd", "", definition));
+  }
+  primer.append(terms);
+  const conditions = element("details", "case-conditions");
+  append(conditions, element("summary", "", "这条真实源码路径何时成立？先记住“是特定配置，不是默认训练”"),
+    element("p", "", caseData.scope),
+    element("p", "", caseData.data_notice));
+  primer.append(conditions);
+  section.append(primer);
+
   const steps = element("div", "case-steps");
-  for (const stage of caseData.stages) {
-    const detail = element("details", "case-step");
-    if (stage.number === "01" || stage.number === "05") detail.open = true;
-    append(detail, element("summary", "", `${stage.number} / ${stage.title}`),
-      element("p", "", stage.explanation),
-      element("code", "case-path", `${stage.path}:${stage.lines}`),
-      element("pre", "case-code", stage.code),
-      element("p", "case-code-note", stage.code_note));
-    steps.append(detail);
+  steps.append(element("h4", "case-steps-heading", "沿着 A 的数据传递顺序，逐行读源码"));
+  for (const [index, stage] of caseData.stages.entries()) {
+    const card = element("article", "case-stage");
+    const heading = element("h5", "case-stage-heading", `${stage.number} / ${stage.title}`);
+    card.append(heading);
+    card.append(element("p", "case-stage-explanation", stage.explanation));
+    const route = element("dl", "case-stage-route");
+    for (const [label, value] of [
+      ["收到", stage.input], ["交出", stage.output], ["A 这一步", stage.trace],
+    ]) {
+      if (!value) continue;
+      append(route, element("dt", "", label), element("dd", "", value));
+    }
+    card.append(route);
+    const detail = element("details", "case-source");
+    if (index === 0) detail.open = true;
+    const sourceLines = stage.code.split("\n");
+    append(detail,
+      element("summary", "", `对照真实源码逐行读 · ${sourceLines.length} 行`),
+      element("code", "case-path", stage.source_label || `${stage.path}:${stage.lines}`),
+      element("pre", "case-code",
+        sourceLines.map((line, lineIndex) =>
+          `${String(lineIndex + 1).padStart(2, "0")} │ ${line}`).join("\n")));
+    detail.append(element("p", "case-source-hint",
+      "左侧数字是本页摘录序号，不是原仓库行号；有省略、重排或跨文件的地方见下方说明。"));
+    if (stage.line_notes?.length === sourceLines.length) {
+      const lineList = element("ol", "case-line-notes");
+      for (const note of stage.line_notes) lineList.append(element("li", "", note));
+      detail.append(lineList);
+    }
+    detail.append(element("p", "case-code-note", stage.code_note));
+    card.append(detail);
+    if (index < caseData.stages.length - 1) {
+      card.append(element("p", "case-stage-next",
+        `接下来 → ${caseData.stages[index + 1].title}`));
+    }
+    steps.append(card);
   }
   section.append(steps);
 
   const lab = element("div", "case-lab");
   append(lab, element("span", "case-eyebrow", "DATA WALKTHROUGH / B = 4, T = 4"),
-    element("h4", "", "把四条回答放进同一个 batch"),
+    element("h4", "", "再把 A / B / C / D 摆在一起验算"),
     element("p", "case-disclaimer", caseData.data_notice));
 
   let gamma = Number(state.caseGamma);

@@ -110,6 +110,12 @@ INDUSTRY_CASE = {
         "但 data_source / reward_model 字段结构、严格的“#### 数字”评分、末位奖励落点与回报循环"
         "均按所列源码逐项核对。只有末尾 padding，没有工具调用；小批量 B=4、回答宽度 T=4。"
     ),
+    "reading_guide": (
+        "先只跟踪 A：题目“2 + 2 = ?”、真值“4”、生成回答“先算，#### 4”。"
+        "这三样不是同时出现：题目和真值来自数据行，回答稍后由模型生成。"
+        "每一步先看“收到什么 → 做了什么 → 交出什么”，再逐行看摘录；"
+        "最后用 B（短而正确）、C（数字错）、D（数字对但格式错）检查边界。"
+    ),
     "stages": [
         {
             "number": "01",
@@ -130,6 +136,18 @@ INDUSTRY_CASE = {
                 '}'
             ),
             "code_note": "结构化摘录：prompt 在源码中分行书写，extra_info 字段为简明起见略去；data_source 在 47 行定义为 openai/gsm8k。",
+            "input": "GSM8K 原始 question 和 answer_raw（后者末尾含“#### 4”）；还没有模型回答。",
+            "output": "A 的记录含 prompt、data_source=openai/gsm8k、reward_model.ground_truth='4'；还没有 response。",
+            "trace": "例如 answer_raw='计算过程 #### 4' → extract_solution 得到字符串 '4'。prompt 发给模型；ground_truth 留待评分。B/C/D 的真值均为 '2'。",
+            "line_notes": [
+                "预处理的 extract_solution 在原始答案里匹配“#### 数字”（若有多处则取首个匹配）；本例只有末尾一处，A 的 solution 是字符串 '4'，不是模型输出。",
+                "建立一条新的数据记录；以下键值是在给这条记录贴标签。",
+                "标识题目来源。后面评分路由正是凭 openai/gsm8k 选择 GSM8K 规则；这不是一个即时奖励。",
+                "把问题封装成 user 消息交给生成模型；本页只写出问题，真实预处理代码还附有输出格式指令。",
+                "把任务标为 math；本条案例的后续演算不依赖此字段。",
+                "style='rule' 表示规则奖励的元数据；ground_truth 是前面取出的 '4'，供稍后与生成答案比较。",
+                "这条记录打包完成。此刻没有 response，也没有 reward_score。",
+            ],
         },
         {
             "number": "02",
@@ -142,6 +160,12 @@ INDUSTRY_CASE = {
             "path": "verl/verl/experimental/agent_loop/agent_loop.py",
             "lines": "997–1027",
             "code": (
+                'n = len(outputs)\n'
+                'batch = TensorDict({\n'
+                '    "prompts": torch.nn.utils.rnn.pad_sequence(all_prompts, batch_first=True, padding_value=0),\n'
+                '    "responses": torch.nn.utils.rnn.pad_sequence(all_responses, batch_first=True, padding_value=0),\n'
+                '    "attention_mask": torch.nn.utils.rnn.pad_sequence(all_attention_mask, batch_first=True, padding_value=0),\n'
+                '}, batch_size=n)\n'
                 'non_tensor_batch = {\n'
                 '    **{k: np.array([v] * n) for k, v in kwargs.items()},\n'
                 '    "__num_turns__": np.array([o.num_turns for o in outputs]),\n'
@@ -149,10 +173,32 @@ INDUSTRY_CASE = {
                 '    "prompt_len": np.array([len(o.prompt_ids) for o in outputs]),\n'
                 '    "response_len": np.array([len(o.response_ids) for o in outputs]),\n'
                 '}\n'
+                'data = DataProto(batch=batch, non_tensor_batch=non_tensor_batch)\n'
                 'result = await selected_reward_loop_worker_handle.compute_score.remote(data)\n'
                 'final_output.reward_score = result["reward_score"]'
             ),
-            "code_note": "两处真实源码节选；DataProto 构造与 worker 选择在原文件中间，未表示为可直接执行的一段代码。",
+            "code_note": "结构化、非连续摘录：TensorDict 构造在真实源码中还包括 input_ids 与 position_ids，attention_mask 的 pad_sequence 原代码跨多行；DataProto 在原源码中跨多行；worker 选择行已省略。这不是可直接运行的一段代码。",
+            "input": "阶段 01 的 prompt、data_source、ground_truth；模型随后生成 A='先算，#### 4' 等回答。",
+            "output": "把响应 token、attention_mask 与题目元数据装入 DataProto 送给 reward worker；评分返回后存为每条回答的标量 reward_score。",
+            "trace": "A 的回答在演示中占 4 个位置；B/C/D 各占 2 个并右补两个空位。kwargs 携带真值，避免评分器只拿到回答、却不知道应与什么比较。",
+            "line_notes": [
+                "n 表示这一次 agent loop 得到的输出数；下面 TensorDict 按它声明当前小批次大小，不必等同于整次训练的 B=4。",
+                "开始建立一批样本的数值张量容器 TensorDict；本页只摘出理解评分所需的字段。",
+                "把各条 prompt token 序列补齐为同宽，batch_first=True 表示第一维是样本行。",
+                "把每条生成回答的 token ID 补齐到同宽；本页演示的回答宽度为 T=4。",
+                "把哪些 token 真正存在也补齐成同形状的 attention_mask；有效=1，padding=0。",
+                "标注此 TensorDict 当前输出批次数为 n；不应直接把这里的 n 误认为全局 B=4。",
+                "开始建立随回答一起发送的非张量字段字典；文本来源、标准答案这类元数据不能直接当作浮点奖励矩阵。",
+                "把 kwargs 里的每个字段复制给本次 outputs 中的 n 条结果；在此教学案例里关注 data_source 与 reward_model。此处的 n 是当前 agent-loop 输出数，不直接等于全局 B=4。",
+                "记录每个输出经历了多少轮；本页单轮、无工具调用，不用它计算回报。",
+                "收集工具产生的附加信息；本页没有工具调用。",
+                "逐个记录问题 prompt 的 token 数，以便区分问题和回答。",
+                "逐个记录回答的有效 token 数；长度不同，所以稍后要补齐。",
+                "非张量字段字典结束。到此还没有分数。",
+                "把张量 batch 和非张量元数据打包在一起，形成交给评分 worker 的 DataProto。",
+                "异步调用所选 reward worker 的 compute_score，把 DataProto 交出去并等待其返回；不是在这里计算奖励。",
+                "从返回字典中取 reward_score，挂在本条最终输出上。其内部如何算出来，要看接下来的阶段 03、04。",
+            ],
         },
         {
             "number": "03",
@@ -163,16 +209,55 @@ INDUSTRY_CASE = {
                 "注意：这不是 workers/reward_manager/naive.py 中旧版 manager。"
             ),
             "path": "verl/verl/experimental/reward_loop/reward_manager/naive.py",
-            "lines": "35–43, 54–55, 66–83, 97–99",
+            "lines": "35–43, 54–83, 97–99",
             "code": (
+                'response_ids = data_item.batch["responses"]\n'
+                'response_length = response_ids.shape[-1]\n'
+                'valid_response_length = data_item.batch["attention_mask"][-response_length:].sum()\n'
+                'valid_response_ids = response_ids[:valid_response_length]\n'
                 'data_source = data_item.non_tensor_batch["data_source"]\n'
                 'ground_truth = data_item.non_tensor_batch["reward_model"]["ground_truth"]\n'
                 'response_str = await self.loop.run_in_executor(\n'
                 '    None, lambda: self.tokenizer.decode(valid_response_ids, skip_special_tokens=True)\n'
                 ')\n'
+                'result = await self.loop.run_in_executor(\n'
+                '    None,\n'
+                '    lambda: self.compute_score(\n'
+                '        data_source=data_source,\n'
+                '        solution_str=response_str,\n'
+                '        ground_truth=ground_truth,\n'
+                '        extra_info=extra_info,\n'
+                '        **extra_reward_kwargs,\n'
+                '    ),\n'
+                ')\n'
                 'return {"reward_score": reward, "reward_extra_info": reward_extra_info}'
             ),
-            "code_note": "非连续节选；实际评分调用 compute_score(data_source=data_source, solution_str=response_str, ground_truth=ground_truth, extra_info=extra_info) 见 66–83 行。",
+            "code_note": "非连续节选：中间展示的是默认 compute_score 为同步函数时的 else 分支；省略了异步自定义函数分支、result→score→reward 的转换及额外信息处理。extra_reward_kwargs 在无 reward router 时为空字典；这不是可直接运行的完整函数。",
+            "input": "阶段 02 发来的 DataProto：回答 token/attention_mask，以及非张量的 data_source 和 ground_truth。",
+            "output": "把有效回答解码为 response_str，调用评分函数，再返回单个 reward_score；本页 A=1。",
+            "trace": "若 B 的回答槽位是 [有效,有效,pad,pad]，attention_mask 对应的回答段求和得 2；只解码前两个有效 token，得到 '#### 2'，不会把 pad 误当作正文。",
+            "line_notes": [
+                "从当前数据项拿出回答 token ID 序列；这里还是数字 ID，不是给人看的文字。",
+                "取得补齐后的回答槽位宽度，便于在 attention_mask 中定位回答部分。",
+                "截取 attention_mask 的回答段并求和，得到真正有效的回答 token 数；B 是 2，不是补齐后的 4。",
+                "只保留前面这么多个有效回答 ID，抛开右侧 padding。",
+                "取出来源标签；评分器需要知道该套用哪一种题目的规则。",
+                "从 reward_model 元数据中取出原题标准答案；A 为字符串 '4'。",
+                "把解码工作安排在线程执行器上，不占用当前异步循环；返回的 response_str 是整段回答文字。",
+                "tokenizer.decode 只解码有效 ID，并跳过特殊 token；本页 A 的示意文字是 '先算，#### 4'。",
+                "解码调用结束；得到 response_str，下一段才会真正评分。",
+                "在默认同步评分函数的分支，仍由线程执行器代为计算并等待结果；只截取了该分支。",
+                "线程执行器的第一个位置参数，此处不另指定执行器。",
+                "传给线程执行器一个稍后执行的 compute_score 调用。",
+                "传入 data_source='openai/gsm8k'，让评分路由找到对应规则。",
+                "传入刚解码的完整回答文字，而不是 token ID。",
+                "传入题目自带的真值字符串，如 A 的 '4'。",
+                "附加元数据；本页演算不使用它。",
+                "传入其他可选参数；本页没有 reward router，因此这些参数为空。",
+                "评分函数的参数列表结束。",
+                "线程执行器调用结束，结果保存在 result；源码接着把 result 转成 score，再赋给 reward。",
+                "把单个 reward 数值与附加信息交回 agent loop；这里还不是逐 token 张量。",
+            ],
         },
         {
             "number": "04",
@@ -184,8 +269,17 @@ INDUSTRY_CASE = {
             ),
             "path": "verl/verl/utils/reward_score/gsm8k.py",
             "lines": "20–36, 52–72",
+            "source_label": (
+                "verl/verl/utils/reward_score/__init__.py:44–47；"
+                "verl/verl/utils/reward_score/gsm8k.py:20–36, 52–72"
+            ),
             "code": (
+                'if data_source == "openai/gsm8k":\n'
+                '    from . import gsm8k\n'
+                '    res = gsm8k.compute_score(solution_str, ground_truth)\n'
+                '# ↓ 切换到 gsm8k.py / extract_solution（非连续摘录）\n'
                 'solutions = re.findall("#### (\\\\-?[0-9\\\\.\\\\,]+)", solution_str)\n'
+                '# ↓ 切换到 gsm8k.py / compute_score（非连续摘录）\n'
                 'answer = extract_solution(solution_str=solution_str, method=method)\n'
                 'if answer is None:\n'
                 '    return 0\n'
@@ -195,7 +289,26 @@ INDUSTRY_CASE = {
                 '    else:\n'
                 '        return format_score'
             ),
-            "code_note": "摘取评分规则与函数主体；源码中默认 score=1、format_score=0，入口路由见 reward_score/__init__.py:44–47。",
+            "code_note": "前三行来自 reward_score/__init__.py 的路由；后面是 gsm8k.py 的非连续摘录，两段不可直接拼接执行。严格提取还会只查看回答末尾 300 个字符，取最后一个匹配并去掉逗号；默认 score=1、format_score=0。",
+            "input": "解码文字 response_str、来源 openai/gsm8k、标准答案 ground_truth。",
+            "output": "整条回答一个分数：A/B/C/D = 1/1/0/0，不是四个 token 各有一个分数。",
+            "trace": "A 提取 '4' = 真值 '4' → 1；B 提取 '2' = '2' → 1；C 提取 '3' ≠ '2' → 0；D 虽写了 2，却没有“#### 空格 数字”→ 无匹配 → 0。",
+            "line_notes": [
+                "默认评分器检查来源标签；只有 openai/gsm8k 才进入下面的 GSM8K 分支。",
+                "延迟导入该题型的评分模块；这一步尚未比较答案。",
+                "把回答文字和真值传给 gsm8k.compute_score；之后转入另一个文件。",
+                "阅读分隔符，不是原代码：后面的正则来自 gsm8k.py 的答案提取函数。",
+                "严格模式先用正则找 '#### ' 后的数字，可匹配多处；真正的 extract_solution 还限制在回答末尾 300 字符内，并取最后一处。",
+                "阅读分隔符，不是原代码：之后展示的是 gsm8k.py 的评分函数，不与上面一行直接相连。",
+                "调用 extract_solution 取得规范化后的答案字符串（如 '4'）；默认 method='strict'，不是见到任意数字就给分。",
+                "如果找不到符合格式的答案（如 D），就进入无答案分支。",
+                "无格式匹配直接返回 0，即便文字里另有正确数字也一样。",
+                "找到了格式正确的候选答案，进入比较分支。",
+                "比较字符串答案与 ground_truth；A/B 相同，C 不同。",
+                "一致则返回默认 score=1.0；每条完整回答只产生一个数。",
+                "不一致进入另一分支。",
+                "返回默认 format_score=0.0；C 的 '#### 3' 虽格式符合，却与真值不符。",
+            ],
         },
         {
             "number": "05",
@@ -217,6 +330,18 @@ INDUSTRY_CASE = {
                 '    batch["rm_scores"] = rm_scores'
             ),
             "code_note": "连续摘录 1091–1097 行；response_mask 的右侧补齐构造见 785–798 行。本例没有中间工具 token。",
+            "input": "四条回答的标量分数 [1,1,0,0]，以及各自的有效长度 [4,2,2,2]。",
+            "output": "同宽的 rm_scores [4,4]：A=[0,0,0,1]，B=[0,1,0,0]，C/D=[0,0,0,0]。",
+            "trace": "B 的回答 mask=[1,1,0,0]，有效长之和 2，末位索引为 2−1=1；于是 B 的 1 被写在第 1 列，不是最后一个 padding 槽第 3 列。",
+            "line_notes": [
+                "从每条生成输出收集 reward_score；四个标量形成 [1,1,0,0]，不是逐 token 分数。",
+                "只有所有输出都有分数才组装这个奖励张量；否则不能以缺失值冒充 0。",
+                "取得 prompt 的补齐宽度；attention_mask 同时覆盖 prompt 和 response，需要先越过 prompt。",
+                "截取回答段，逐行求有效位数，再减 1 得到零起始的最后有效索引；A=3、B/C/D=1。",
+                "按 response_mask 造一个全零 float 张量；形状是 [B,T]=[4,4]。",
+                "按行号与该行的末位索引配对写分数：A 的 1 写到 col3，B 的 1 写到 col1；零分行仍全零。",
+                "把这个矩阵保存在 batch['rm_scores'] 中，后续 trainer 才能读取。",
+            ],
         },
         {
             "number": "06",
@@ -240,6 +365,20 @@ INDUSTRY_CASE = {
                 '    data.batch["token_level_rewards"] = data.batch["token_level_scores"]'
             ),
             "code_note": "两个位置的真实节选，非连续可运行代码；关闭 KL 的分支才使 rewards 与 scores 相等。",
+            "input": "采样批次中的 response_mask 和 rm_scores；A=[0,0,0,1]、B=[0,1,0,0]。",
+            "output": "在本例关闭 KL 惩罚与额外整形时，token_level_rewards 与 rm_scores 数值相同；这里只是把整条评分安置为逐位置奖励。",
+            "trace": "名字分三层：reward_score 是一条回答的标量；rm_scores 是放到最后有效位的矩阵；token_level_rewards 是供回报算法读取的逐位置奖励。此例它们相关，但不是同一种数据结构。",
+            "line_notes": [
+                "取回答 mask，标清哪些位置可参与后续计算；与下行的 data 转换是相邻但不等于完整 trainer 函数。",
+                "把队列取到的批次整理为带填充的 DataProto 张量形式，便于下游按矩阵运算。",
+                "把已有 rm_scores 赋给 token_level_scores；数值没有改，字段表示未经 KL 调整的分数。",
+                "如果 use_kl_in_reward 为真，会进入惩罚分支；本案例配置为 False，所以不会走它。",
+                "调用 KL 惩罚函数的起始行；本例跳过。",
+                "传入 KL 控制器和惩罚形式；仍是本例未执行的分支。",
+                "KL 调用结束；本例不执行。",
+                "本例执行 else 分支；还假定没有额外奖励整形等改写。",
+                "把 token_level_scores 赋给 token_level_rewards；A/B 分别保持 [0,0,0,1]、[0,1,0,0]。",
+            ],
         },
         {
             "number": "07",
@@ -260,6 +399,17 @@ INDUSTRY_CASE = {
                 '    running_return = running_return * response_mask[:, t]'
             ),
             "code_note": "连续摘录 739–746 行（略去 EOS 注释）；默认配置为 gamma=1.0、adv_estimator=gae，本例在滑块里演示改动 gamma。",
+            "input": "token_level_rewards [4,4]、response_mask [4,4]、显式选择 REINFORCE++ 的配置；演示 γ=0.9。",
+            "output": "returns [4,4]：A=[0.729,0.81,0.9,1]，B=[0.9,1,0,0]，C/D 全零。",
+            "trace": "默认演算 γ=0.9：A 从最右侧奖励 1 开始，往左每走一步乘 0.9：1→0.9→0.81→0.729。B 右侧是 padding，先清零；在 col1 遇到 1，再到 col0 得 0.9。下方改动 γ 时，以动态表为准。四行各自独立，不会互相串分。",
+            "line_notes": [
+                "建立与逐位置奖励同形状的全零 returns 张量；每个有效回答位置最终有一个采样回报。",
+                "初始化倒序累积量为 0；第一次处理一列后变为每行一个数的向量。",
+                "从最右列走到最左列，因为当前位置的回报依赖右边下一位置已经算出的回报。",
+                "一次处理 batch 全部行的第 t 列：当前奖励 + γ×右侧积累值；A 在 t=2 算出 0+0.9×1=0.9。",
+                "把本轮每行算出的值写入 returns 的第 t 列；它是当前前缀以后实际生成轨迹的折扣和。",
+                "用当前位置是否有效清掉 padding 行的累积值，以免从无效位置继续倒推；列维度批量并行、行之间本来也不会互相混合。源码先写 returns 再做这个乘法；本例只有右侧 padding 且 pad 奖励为 0。",
+            ],
         },
     ],
     "samples": [

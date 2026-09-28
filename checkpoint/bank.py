@@ -10,6 +10,7 @@ questions are self-assessed from a rubric; coding exercises are graded entirely
 in the browser.
 """
 
+import json
 import math
 
 
@@ -93,6 +94,72 @@ def _solution_compute_return():
         "        running_return = reward + gamma * running_return",
         "    return running_return",
     ])
+
+
+def _mc_gridworld_demo():
+    """Interactive Monte Carlo evaluation demo for the 2x2 gridworld.
+
+    All data here is a teaching construction: the 2x2 grid with a terminal
+    +1 cell is invented for this page, while the exact values come from
+    solving the uniform-policy Bellman equations at each gamma by the same
+    value-iteration sweep shown in class. No external environment code runs.
+    """
+    transitions = {
+        # 撞墙留在原地；只有走到 s4 才给 +1，然后回合结束。
+        0: {0: [0, 0.0], 1: [2, 0.0], 2: [0, 0.0], 3: [1, 0.0]},
+        1: {0: [1, 0.0], 1: [3, 1.0], 2: [0, 0.0], 3: [1, 0.0]},
+        2: {0: [0, 0.0], 1: [2, 0.0], 2: [2, 0.0], 3: [3, 1.0]},
+    }
+    gammas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    exact = {}
+    for gamma in gammas:
+        values = [0.0, 0.0, 0.0, 0.0]
+        for _ in range(2000):
+            updated = values[:]
+            for state, actions in transitions.items():
+                total = 0.0
+                for outcome in actions.values():
+                    nxt, reward = outcome
+                    total += reward + gamma * values[nxt]
+                updated[state] = 0.25 * total
+            values = updated
+        exact[str(gamma)] = [round(values[i], 3) for i in range(3)]
+    # 键统一为字符串，保证 HTTP JSON 与直接调用 public_payload() 一致。
+    demo = {
+        "kind": "mc-gridworld",
+        "title": "蒙特卡洛实验场：2×2 网格上把 V(s) 跑出来",
+        "data_notice": (
+            "这个 2×2 网格是教学构造：s4 是终点，走到 s4 得 +1，撞墙原地不动且奖励 0，"
+            "策略是上下左右各 25% 的均匀随机策略。下方“精确解”按同一组规则用值迭代 2000 轮"
+            "算到收敛，供蒙特卡洛估计对照；全部计算只发生在你浏览器的本页脚本里。"
+        ),
+        "reading_guide": (
+            "先看智能体一局怎么走：撞墙原地不动，只有进 s4 拿 +1。整局结束后才倒序算 G "
+            "并更新价值——这正是你 compute_return 的用法。再观察奖励怎样一局一局从 s4 "
+            "扩散到 s2/s3、再到 s1，最后点“快进”，看估计值慢慢逼近精确解。"
+        ),
+        "policy_note": "策略 π：上下左右各 25%，撞墙原地不动",
+        "episode_cap": 80,
+        "default_gamma": 0.9,
+        "default_speed": 900,
+        "speeds": [
+            {"label": "0.5×", "ms": 1600},
+            {"label": "1×", "ms": 900},
+            {"label": "2×", "ms": 450},
+            {"label": "4×", "ms": 220},
+        ],
+        "bulk_steps": [100, 1000, 10000],
+        "states": ["s1", "s2", "s3", "s4"],
+        "terminal": 3,
+        "actions": ["↑", "↓", "←", "→"],
+        "transitions": {
+            str(state): {str(action): outcome for action, outcome in actions.items()}
+            for state, actions in transitions.items()
+        },
+        "exact": exact,
+    }
+    # 往返一次，确保前端拿到的结构与 JSON 完全一致。
+    return json.loads(json.dumps(demo))
 
 
 INDUSTRY_CASE = {
@@ -705,6 +772,7 @@ QUESTIONS = [
             {"criterion": "只用标准库、无副作用、可被公开测试直接调用。", "points": 4},
         ],
         "_solution": _solution_compute_return(),
+        "demo": _mc_gridworld_demo(),
     },
     {
         "id": "q12",
@@ -802,6 +870,8 @@ def public_question(question):
         out["source_note"] = dict(question["source_note"])
     if "review_hint" in question:
         out["review_hint"] = question["review_hint"]
+    if "demo" in question:
+        out["demo"] = question["demo"]
     return out
 
 

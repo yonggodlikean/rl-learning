@@ -554,6 +554,9 @@ function renderQuestion(question) {
     fragment.append(data.industry_case.kind === "mdp-planning"
       ? renderMdpCase(data.industry_case) : renderIndustryCase(data.industry_case));
   }
+  if (question.demo?.kind === "mc-gridworld") {
+    fragment.append(renderMcGridworld(question.demo));
+  }
   if (question.type === "choice") fragment.append(renderChoice(question, answer));
   if (question.type === "numeric") fragment.append(renderNumeric(question, answer));
   if (question.type === "open") fragment.append(renderOpen(question, answer));
@@ -947,6 +950,530 @@ function feedback(title, text, kind) {
   panel.setAttribute("role", "status");
   append(panel, element("strong", "", title), element("p", "", text));
   return panel;
+}
+
+// ── 2×2 网格蒙特卡洛实验场（教学构造，全部在本页计算）─────────────
+// 流程与 q11 的 compute_return 一致：一局走到终点才倒序算 G，
+// 再按状态把 G 平均成 V(s) 的估计；不用环境转移表做任何“计算”，
+// 转移表只在采样时决定智能体走到哪里。
+
+function mcSimulation(demo) {
+  const sums = [0, 0, 0];
+  const counts = [0, 0, 0];
+  const history = [];
+  let rngState = (Math.floor(Math.random() * 2147483646) + 1) >>> 0;
+  const rand = () => {
+    rngState = (rngState + 0x6D2B79F5) >>> 0;
+    let t = rngState;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const sampleAction = () => Math.min(3, Math.floor(rand() * 4));
+  const runEpisode = (start, gamma, collect) => {
+    let stateIdx = start;
+    const trajectory = [];
+    let steps = 0;
+    while (stateIdx !== demo.terminal && steps < demo.episode_cap) {
+      const action = sampleAction();
+      const [next, reward] = demo.transitions[stateIdx][action];
+      // commit 依赖 trajectory 做 first-visit 记账，所以无论是否展示都要记录；
+      // collect 只控制是否额外保存动作（用于逐步播放的格子高亮）。
+      const step = { state: stateIdx, reward };
+      if (collect) { step.action = action; step.next = next; }
+      trajectory.push(step);
+      stateIdx = next;
+      steps += 1;
+    }
+    let g = 0;
+    const returns = new Array(trajectory.length);
+    for (let i = trajectory.length - 1; i >= 0; i--) {
+      g = trajectory[i].reward + gamma * g;
+      returns[i] = g;
+    }
+    return { trajectory, returns, hitCap: stateIdx !== demo.terminal };
+  };
+  // lastEpisode 保存最近一次跑完但（在分步播放时）还没入库的轨迹，
+  // 保证分步播放的"finishEpisode 才入库"与一次性跑局的语义一致。
+  let lastEpisode = null;
+  const commitEpisode = (episode) => {
+    const seen = new Set();
+    episode.trajectory.forEach((step, index) => {
+      if (seen.has(step.state)) return;
+      seen.add(step.state);
+      sums[step.state] += episode.returns[index];
+      counts[step.state] += 1;
+    });
+    history.push(episode.trajectory.length);
+  };
+  const commit = (episode) => {
+    commitEpisode(episode);
+    lastEpisode = episode;
+  };
+  return {
+    runOne(start, gamma) {
+      const episode = runEpisode(start, gamma, true);
+      commit(episode);
+      return episode;
+    },
+    uncommit() {
+      // 撤销最近一次 commit（分步播放开始时调用，等 finishEpisode 再统一入库）
+      if (!lastEpisode) return;
+      const seen = new Set();
+      lastEpisode.trajectory.forEach((step, index) => {
+        if (seen.has(step.state)) return;
+        seen.add(step.state);
+        sums[step.state] -= lastEpisode.returns[index];
+        counts[step.state] -= 1;
+      });
+      history.pop();
+      lastEpisode = null;
+    },
+    commitCurrent(episode) {
+      // 分步播放结束时入库（与 uncommit 配对）
+      commitEpisode(episode);
+      lastEpisode = episode;
+    },
+    runBulk(count, gamma) {
+      for (let i = 0; i < count; i++) commit(runEpisode(Math.floor(rand() * 3), gamma, false));
+    },
+    averages() {
+      return sums.map((sum, index) => (counts[index] ? sum / counts[index] : 0));
+    },
+    visits() { return counts.slice(); },
+    episodes() { return history.length; },
+    totalSteps() { return history.reduce((sum, length) => sum + length, 0); },
+    averageLength() {
+      return history.length ? this.totalSteps() / history.length : 0;
+    },
+    recentLengths(limit) { return history.slice(-limit); },
+    reset() {
+      sums.fill(0);
+      counts.fill(0);
+      history.length = 0;
+    },
+  };
+}
+
+function renderMcGridworld(demo) {
+  const sim = mcSimulation(demo);
+  let gamma = demo.default_gamma;
+  let currentStart = 0;
+  let currentEpisode = null;
+  let playedStep = -1;
+  let playing = false;
+  let timer = 0;
+  let speedMs = demo.default_speed;
+  let hoverInfo = null;
+  let disposed = false;
+
+  const section = element("section", "industry-case mc-case");
+  section.setAttribute("aria-label", "2×2 网格蒙特卡洛价值评估动画");
+  const header = element("div", "industry-heading");
+  append(header,
+    element("span", "case-eyebrow", "INTERACTIVE / MONTE CARLO EVALUATION"),
+    element("h3", "", demo.title),
+    element("p", "", "贝尔曼方程是一步到位的代数解法；蒙特卡洛不解方程，只按策略真跑一局，"
+      + "走到终点后倒序算出每个状态的折扣回报 G，再取平均当作 V(s)。"));
+  section.append(header);
+
+  const guide = element("p", "case-disclaimer", demo.reading_guide);
+  section.append(guide);
+
+  const stage = element("div", "mc-stage");
+
+  // ── 左栏：网格 ──
+  const gridWrap = element("div", "mc-grid-wrap");
+  const grid = element("div", "mc-grid");
+  grid.setAttribute("role", "img");
+  grid.setAttribute("aria-label",
+    "2×2 网格：左上 s1、右上 s2、左下 s3、右下终点 s4，走到 s4 得 +1");
+  const cells = [];
+  for (let i = 0; i < 4; i++) {
+    const cell = element("div", `mc-cell${i === demo.terminal ? " mc-terminal" : ""}`);
+    cell.dataset.state = String(i);
+    const name = element("span", "mc-cell-name", demo.states[i]);
+    const value = element("span", "mc-cell-value", i === demo.terminal ? "终点" : "0");
+    const sub = element("span", "mc-cell-sub", i === demo.terminal ? "+1 → 回合结束" : "V̂ = 0 · n = 0");
+    const badge = element("span", "mc-badge", "");
+    badge.setAttribute("aria-hidden", "true");
+    const token = element("span", "mc-token", "●");
+    token.setAttribute("aria-hidden", "true");
+    append(cell, name, value, sub, badge, token);
+    grid.append(cell);
+    cells.push({ cell, value, sub, badge, token });
+  }
+  const caption = element("p", "mc-caption", demo.policy_note);
+  append(gridWrap, grid, caption);
+
+  // ── 右栏：统计与日志 ──
+  const panel = element("div", "mc-panel");
+  const statsRow = element("div", "mc-stats");
+  const episodeStat = element("div", "mc-stat");
+  append(episodeStat, element("span", "mc-stat-num", "0"), element("span", "mc-stat-label", "已跑局数"));
+  const lengthStat = element("div", "mc-stat");
+  append(lengthStat, element("span", "mc-stat-num", "—"), element("span", "mc-stat-label", "本局步数"));
+  const avgLengthStat = element("div", "mc-stat");
+  append(avgLengthStat, element("span", "mc-stat-num", "—"), element("span", "mc-stat-label", "平均步长"));
+  append(statsRow, episodeStat, lengthStat, avgLengthStat);
+
+  const tableWrap = element("div", "case-table-wrap mc-estimates");
+  const estimateHead = element("div", "mc-estimates-head");
+  append(estimateHead,
+    element("span", "", "状态"),
+    element("span", "", "V̂ 估计"),
+    element("span", "", "精确解"),
+    element("span", "", "采样次数"));
+  const estimateRows = demo.states.slice(0, 3).map((name, index) => {
+    const row = element("div", "mc-estimates-row");
+    const estimateCell = element("span", "mc-estimate", "0");
+    const exactCell = element("span", "", displayedNumber(demo.exact[gamma.toFixed(1)][index]));
+    const countCell = element("span", "", "0");
+    append(row, element("span", "", name), estimateCell, exactCell, countCell);
+    return { row, estimateCell, exactCell, countCell, index };
+  });
+  tableWrap.append(estimateHead, ...estimateRows.map((row) => row.row));
+
+  const log = element("div", "mc-log");
+  log.setAttribute("aria-live", "polite");
+  log.append(element("p", "mc-log-line mc-log-muted",
+    "点击「跑一局」开始；γ 可以在任何时候调整，已累积的样本会重新倒序折算。"));
+
+  const spark = element("canvas", "mc-spark");
+  spark.width = 320;
+  spark.height = 44;
+  spark.setAttribute("aria-label", "最近 40 局的步数火花线");
+  const sparkLabel = element("p", "mc-spark-label", "最近 40 局步数");
+  append(panel, statsRow, tableWrap, sparkLabel, spark, log);
+
+  append(stage, gridWrap, panel);
+  section.append(stage);
+
+  // ── 控制条 ──
+  const controls = element("div", "mc-controls");
+  const playButton = button("▶ 连续跑", "button button-primary mc-play", () => togglePlay());
+  const stepButton = button("跑一局", "button mc-step", () => runInteractiveEpisode());
+  const bulkButtons = demo.bulk_steps.map((count) =>
+    button(`快进 ${count.toLocaleString()} 局`, "button button-quiet mc-bulk",
+      () => runBulk(count)));
+  const resetButton = button("重置", "button button-quiet mc-reset", () => reset());
+  const gammaWrap = element("label", "mc-gamma");
+  const gammaValue = element("output", "", `γ = ${gamma.toFixed(1)}`);
+  const gammaSlider = element("input");
+  gammaSlider.type = "range";
+  gammaSlider.min = "0";
+  gammaSlider.max = "1";
+  gammaSlider.step = "0.1";
+  gammaSlider.value = String(gamma);
+  gammaSlider.setAttribute("aria-label", "折扣因子 γ");
+  append(gammaWrap, element("span", "", "γ"), gammaSlider, gammaValue);
+  const speedWrap = element("div", "mc-speed");
+  append(speedWrap, element("span", "", "速度"));
+  const speedButtons = demo.speeds.map(({ label, ms }) => {
+    const speedButton = button(label, `button button-quiet mc-speed-btn${ms === speedMs ? " active" : ""}`,
+      () => setSpeed(ms, speedButton));
+    speedButton.dataset.ms = String(ms);
+    speedWrap.append(speedButton);
+    return speedButton;
+  });
+  append(controls, playButton, stepButton, ...bulkButtons, resetButton, gammaWrap, speedWrap);
+  section.append(controls);
+
+  // ── 悬浮提示 ──
+  const tooltip = element("div", "mc-tooltip");
+  tooltip.hidden = true;
+  section.append(tooltip);
+
+  section.addEventListener("mousemove", (event) => {
+    if (tooltip.hidden) return;
+    const bounds = section.getBoundingClientRect();
+    const x = Math.min(event.clientX - bounds.left + 14, bounds.width - 190);
+    const y = Math.max(event.clientY - bounds.top - 10, 8);
+    tooltip.style.left = `${x}px`;
+    tooltip.style.top = `${y}px`;
+  });
+
+  section.append(element("p", "case-footnote",
+    "以上全部是本页脚本在浏览器里跑出来的采样，没有联网、没有服务端计算；"
+    + "刷新页面后采样清零，学习进度不受影响。"));
+
+  function setSpeed(ms, sourceButton) {
+    speedMs = ms;
+    for (const speedButton of speedButtons) {
+      speedButton.classList.toggle("active", speedButton === sourceButton);
+    }
+    if (playing) {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(advance, ms);
+    }
+  }
+
+  function exactRow() {
+    return demo.exact[gamma.toFixed(1)];
+  }
+
+  function refreshEstimates() {
+    const averages = sim.averages();
+    const visits = sim.visits();
+    estimateRows.forEach(({ estimateCell, exactCell, countCell, index }) => {
+      estimateCell.textContent = displayedNumber(averages[index]);
+      exactCell.textContent = displayedNumber(exactRow()[index]);
+      countCell.textContent = String(visits[index]);
+    });
+    for (let i = 0; i < 3; i++) {
+      cells[i].value.textContent = displayedNumber(averages[i]);
+      cells[i].sub.textContent = `n = ${visits[i]}`;
+    }
+    episodeStat.firstElementChild.textContent = sim.episodes().toLocaleString();
+    avgLengthStat.firstElementChild.textContent = sim.episodes()
+      ? displayedNumber(sim.averageLength()) : "—";
+    drawSpark();
+  }
+
+  function drawSpark() {
+    const ctx = spark.getContext("2d");
+    ctx.clearRect(0, 0, spark.width, spark.height);
+    const dataPoints = sim.recentLengths(40);
+    if (dataPoints.length < 2) return;
+    const max = Math.max(...dataPoints, 1);
+    ctx.strokeStyle = "#a63b20";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    dataPoints.forEach((value, index) => {
+      const x = (index / (dataPoints.length - 1)) * (spark.width - 4) + 2;
+      const y = spark.height - 3 - (value / max) * (spark.height - 8);
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }
+
+  function showToken(stateIdx) {
+    cells.forEach(({ token }, index) => {
+      token.classList.toggle("on", index === stateIdx);
+    });
+  }
+
+  const LOG_LIMIT_IDLE = 6;
+  const LOG_LIMIT_BACKTRACK = 30;   // 倒序算 G 时一局的行数可能较长
+  let logLimit = LOG_LIMIT_IDLE;
+
+  function logLine(text, tone) {
+    const line = element("p", `mc-log-line${tone ? ` mc-log-${tone}` : ""}`, text);
+    log.prepend(line);
+    while (log.children.length > logLimit) log.lastElementChild.remove();
+  }
+
+  function clearEpisodeMarks() {
+    cells.forEach(({ cell }) => cell.classList.remove("mc-active", "mc-visit", "mc-next", "mc-hit-wall", "mc-hit-goal"));
+  }
+
+  function describeAction(stateIdx, action) {
+    const [next, reward] = demo.transitions[stateIdx][action];
+    const hitWall = next === stateIdx;
+    const arrow = demo.actions[action];
+    if (reward > 0) return `${demo.states[stateIdx]} ${arrow} → ${demo.states[next]}，+1 终点`;
+    if (hitWall) return `${demo.states[stateIdx]} ${arrow} 撞墙，原地`;
+    return `${demo.states[stateIdx]} ${arrow} → ${demo.states[next]}`;
+  }
+
+  function applyStep(stepIndex) {
+    const step = currentEpisode.trajectory[stepIndex];
+    clearEpisodeMarks();
+    const stepClass = step.reward > 0 ? "mc-hit-goal" : (step.next === step.state ? "mc-hit-wall" : "mc-active");
+    cells[step.state].cell.classList.add(stepClass);
+    cells[step.next].cell.classList.add(step.next === step.state ? "mc-active" : "mc-next");
+    showToken(step.state);
+    cells.forEach(({ badge }, i) => {
+      if (i === step.state && step.reward > 0) {
+        badge.textContent = "+1";
+        badge.classList.add("mc-show");
+      } else if (i === step.state && step.next === step.state) {
+        badge.textContent = "✕";
+        badge.classList.add("mc-show");
+      } else {
+        badge.textContent = "";
+        badge.classList.remove("mc-show");
+      }
+    });
+    playedStep = stepIndex;
+    lengthStat.firstElementChild.textContent = `${stepIndex + 1} / ${currentEpisode.trajectory.length}`;
+    logLine(`第 ${stepIndex + 1} 步：${describeAction(step.state, step.action)}`);
+  }
+
+  function finishEpisode() {
+    // 注意：不要在这里 stopPlaying()——连续播放的计时器由 advance 末尾统一调度。
+    clearEpisodeMarks();
+    cells.forEach(({ badge }) => {
+      badge.textContent = "";
+      badge.classList.remove("mc-show");
+    });
+    const episode = currentEpisode;
+    episode.trajectory.forEach((step) => {
+      cells[step.state].cell.classList.add("mc-visit");
+    });
+    logLimit = Math.max(LOG_LIMIT_BACKTRACK, episode.trajectory.length + 4);
+    logLine("回合结束，开始倒序算 G（和 compute_return 同一个递推）：", "back");
+    let g = 0;
+    for (let i = episode.trajectory.length - 1; i >= 0; i--) {
+      const step = episode.trajectory[i];
+      const prev = g;
+      g = step.reward + gamma * g;
+      logLine(
+        `  G${i} = ${step.reward} + ${gamma.toFixed(1)}×${displayedNumber(prev)} = ${displayedNumber(g)}`
+        + `   (此时在 ${demo.states[step.state]})`,
+        "back");
+    }
+    const updates = [];
+    const seen = new Set();
+    episode.trajectory.forEach((step, index) => {
+      if (seen.has(step.state)) return;
+      seen.add(step.state);
+      updates.push(`${demo.states[step.state]} ← G = ${displayedNumber(episode.returns[index])}`);
+    });
+    logLine(`按 first-visit 平均进 V̂：${updates.join("，")}`, "success");
+    logLimit = LOG_LIMIT_IDLE;
+    sim.commitCurrent(episode);
+    currentEpisode = null;
+    playedStep = -1;
+    refreshEstimates();
+  }
+
+  function advance() {
+    if (!currentEpisode) {
+      currentStart = Math.floor(Math.random() * 3);
+      currentEpisode = sim.runOne(currentStart, gamma);
+      sim.uncommit();            // 分步播放时先不入库，等 finishEpisode 统一记
+      playedStep = -1;
+      clearEpisodeMarks();
+      showToken(currentStart);
+      lengthStat.firstElementChild.textContent = `0 / ${currentEpisode.trajectory.length}`;
+      logLine(`—— 第 ${sim.episodes() + 1} 局：从 ${demo.states[currentStart]} 出发 ——`);
+      if (currentEpisode.hitCap) {
+        logLine(`γ=1 时随机策略可能绕很远；本局超过 ${demo.episode_cap} 步已截断。`, "warning");
+      }
+      if (playing) timer = window.setTimeout(advance, speedMs);
+      return;
+    }
+    const nextIndex = playedStep + 1;
+    if (nextIndex < currentEpisode.trajectory.length) {
+      applyStep(nextIndex);
+      if (playing) timer = window.setTimeout(advance, speedMs);
+      return;
+    }
+    finishEpisode();
+    if (playing) timer = window.setTimeout(advance, Math.max(120, speedMs * 0.6));
+  }
+
+  function runInteractiveEpisode() {
+    // 一次性跑完一整局：轨迹逐步走完，最后倒序算 G 并入库。
+    if (playing) return;
+    if (currentEpisode) return;   // 正在分步播放，先播完
+    currentStart = Math.floor(Math.random() * 3);
+    currentEpisode = sim.runOne(currentStart, gamma);
+    logLine(`—— 第 ${sim.episodes()} 局：从 ${demo.states[currentStart]} 出发，共 ${currentEpisode.trajectory.length} 步 ——`);
+    if (currentEpisode.hitCap) {
+      logLine(`γ=1 时随机策略可能绕很远；本局超过 ${demo.episode_cap} 步已截断。`, "warning");
+    }
+    // 一次性画完轨迹再统一结束（不分帧计时）
+    for (let index = 0; index < currentEpisode.trajectory.length; index++) applyStep(index);
+    finishEpisode();
+  }
+
+  function togglePlay() {
+    if (playing) {
+      stopPlaying();
+      playButton.textContent = "▶ 继续";
+      return;
+    }
+    playing = true;
+    playButton.textContent = "⏸ 暂停";
+    advance();
+  }
+
+  function stopPlaying() {
+    playing = false;
+    window.clearTimeout(timer);
+  }
+
+  function runBulk(count) {
+    stopPlaying();
+    playButton.textContent = "▶ 连续跑";
+    currentEpisode = null;
+    playedStep = -1;
+    clearEpisodeMarks();
+    sim.runBulk(count, gamma);
+    showToken(-1);
+    lengthStat.firstElementChild.textContent = "—";
+    logLine(`快进 ${count.toLocaleString()} 局完成，累计 ${sim.episodes().toLocaleString()} 局。`, "success");
+    refreshEstimates();
+  }
+
+  function reset() {
+    stopPlaying();
+    playButton.textContent = "▶ 连续跑";
+    sim.reset();
+    currentEpisode = null;
+    playedStep = -1;
+    clearEpisodeMarks();
+    showToken(-1);
+    lengthStat.firstElementChild.textContent = "—";
+    log.replaceChildren(element("p", "mc-log-line mc-log-muted",
+      "已清零。点击「跑一局」重新开始；γ 调整会立即重算精确解列。"));
+    refreshEstimates();
+  }
+
+  gammaSlider.addEventListener("input", () => {
+    gamma = Number(gammaSlider.value);
+    gammaValue.textContent = `γ = ${gamma.toFixed(1)}`;
+    if (!playing) refreshEstimates();
+  });
+  gammaSlider.addEventListener("change", () => {
+    if (playing) refreshEstimates();
+  });
+
+  grid.addEventListener("mousemove", (event) => {
+    const cell = event.target.closest(".mc-cell");
+    if (!cell) {
+      tooltip.hidden = true;
+      hoverInfo = null;
+      return;
+    }
+    const stateIdx = Number(cell.dataset.state);
+    const actions = demo.transitions[stateIdx];
+    const names = demo.actions;
+    tooltip.innerHTML = "";
+    const title = element("strong", "", `${demo.states[stateIdx]} 的四个动作`);
+    tooltip.append(title);
+    const list = element("ul", "");
+    Object.entries(actions).forEach(([action, [next, reward]]) => {
+      const hitWall = next === stateIdx;
+      const rewardText = reward > 0 ? `，奖励 +${reward}` : "";
+      const item = element("li", "",
+        `${names[action]} → ${hitWall ? "撞墙原地" : demo.states[next]}${rewardText}`);
+      list.append(item);
+    });
+    tooltip.append(list);
+    tooltip.hidden = false;
+    hoverInfo = stateIdx;
+  });
+  grid.addEventListener("mouseleave", () => {
+    tooltip.hidden = true;
+    hoverInfo = null;
+  });
+
+  // 页面卸载 / 切换题目时停止计时器，避免后台空转
+  const observer = new MutationObserver(() => {
+    if (!document.body.contains(section) && !disposed) {
+      disposed = true;
+      stopPlaying();
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  refreshEstimates();
+  return section;
 }
 
 function renderChoice(question, answer) {

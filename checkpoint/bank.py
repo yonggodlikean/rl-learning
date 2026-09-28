@@ -43,6 +43,32 @@ CONVENTIONS = (
     "“同步备份”指用同一份旧价值 V 一次性算出全部新价值 V' = R + γ·P·V（先用旧值算完再整体写回）。"
 )
 
+PRESENTATION = {
+    "eyebrow": "从定义走到可计算",
+    "intro": "不急着进入 PPO。先用概念判断、手算、解释和两段小代码，确认经典 RL 的第一块地基。",
+    "field_notes": [
+        {
+            "label": "01 / RETURN",
+            "formula": "Gₜ = rₜ₊₁ + γGₜ₊₁",
+            "tex": r"G_t=r_{t+1}+\gamma G_{t+1}",
+            "description": "从后往前算。第一个奖励不打折，后续奖励每晚一步乘一次 γ。",
+        },
+        {
+            "label": "02 / VALUE",
+            "formula": "V(s) = E[Gₜ | Sₜ = s]",
+            "tex": r"V(s)=\mathbb E[G_t\mid S_t=s]",
+            "description": "一次轨迹的回报是样本；状态价值是所有可能轨迹回报的期望。",
+        },
+        {
+            "label": "03 / BELLMAN",
+            "formula": "V = R + γPV",
+            "tex": r"V=R+\gamma PV",
+            "description": "P 的每一行对应一个当前状态，元素是去往各后继状态的概率。",
+        },
+    ],
+    "note_footer": "仅覆盖当前阅读进度。遇到尚未学过的算法，可以先跳过。",
+}
+
 
 def _starter_compute_return():
     return "\n".join([
@@ -624,6 +650,8 @@ def public_question(question):
         ]
     if "source_note" in question:
         out["source_note"] = dict(question["source_note"])
+    if "review_hint" in question:
+        out["review_hint"] = question["review_hint"]
     return out
 
 
@@ -632,6 +660,7 @@ def public_payload():
     return {
         "reference": REFERENCE,
         "conventions": CONVENTIONS,
+        "presentation": PRESENTATION,
         "industry_case": INDUSTRY_CASE,
         "total_score": TOTAL_SCORE,
         "count": len(QUESTIONS),

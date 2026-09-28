@@ -42,6 +42,7 @@ h1 em { color: var(--accent-deep); font-style: normal; }
 .hero-stamp strong span { font-size: 17px; margin-left: 4px; }
 .hero-stamp small { color: var(--muted); font-size: 11px; }
 .layout { display: grid; grid-template-columns: minmax(205px, 245px) minmax(0, 1fr) minmax(205px, 260px); padding: 0 clamp(20px, 3.3vw, 58px) 90px; align-items: stretch; }
+.layout.no-reference { grid-template-columns: minmax(205px, 245px) minmax(0, 1fr); }
 .navigation, .reference { border-top: 1px solid var(--ink); padding-top: 22px; }
 .navigation { padding-right: 24px; }
 .reference { padding-left: 26px; }
@@ -56,7 +57,11 @@ h1 em { color: var(--accent-deep); font-style: normal; }
 .chapter-picker .answer-label { margin-bottom: 7px; }
 .chapter-select { width: 100%; min-width: 0; padding: 9px 10px; color: var(--ink); background: #fffdf8; border: 1px solid #b4bbae; font: 12px/1.5 var(--sans); }
 .chapter-select:focus-visible { outline: 3px solid var(--accent); }
+.chapter-permalink, .question-permalink { color: var(--accent-deep); text-decoration: underline; text-underline-offset: 3px; }
+.chapter-permalink { display: inline-block; margin-top: 9px; font-size: 11px; }
+.chapter-permalink:hover, .question-permalink:hover { color: var(--ink); }
 .nav-hint { display: none; }
+.nav-strip { min-width: 0; }
 .nav-group { margin: 0 0 18px; }
 .nav-group-heading { color: #768077; font: 700 10px var(--mono); letter-spacing: .09em; margin: 0 0 7px; }
 .nav-question { width: 100%; background: transparent; color: var(--ink); border: 0; border-left: 2px solid transparent; padding: 7px 8px 7px 11px; display: flex; align-items: center; text-align: left; gap: 11px; line-height: 1.4; font-size: 13px; }
@@ -72,11 +77,13 @@ h1 em { color: var(--accent-deep); font-style: normal; }
 .workspace-topline { display: flex; justify-content: space-between; gap: 12px; padding: 16px 30px; border-bottom: 1px solid var(--line); color: var(--muted); font: 700 10px var(--mono); letter-spacing: .06em; }
 .workspace-topline #workspace-status { color: var(--accent-deep); text-align: right; }
 #question-view, #summary-view { padding: clamp(24px, 3.5vw, 56px); }
-.question-meta { display: flex; align-items: center; gap: 10px; font: 700 11px var(--mono); color: var(--accent-deep); letter-spacing: .03em; margin-bottom: 25px; }
+.question-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font: 700 11px var(--mono); color: var(--accent-deep); letter-spacing: .03em; margin-bottom: 25px; }
 .question-meta .meta-divider { color: #b8b8aa; }
+.question-permalink { margin-left: auto; white-space: nowrap; font: 600 11px var(--sans); }
 .question-title { font: 500 clamp(27px, 2.6vw, 40px)/1.25 var(--serif); letter-spacing: -.035em; margin-bottom: 24px; }
 .question-prompt { font-size: 15px; line-height: 1.85; color: #34403a; margin-bottom: 31px; white-space: pre-wrap; }
 .question-prompt::first-letter { color: var(--accent-deep); }
+.question-source { margin: -20px 0 24px; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .inline-math { display: inline; vertical-align: baseline; color: #173f37; }
 .inline-math .katex { font-size: 1.045em; }
 .math-equation { display: block; max-width: 100%; overflow-x: auto; margin: .45em 0; padding: .13em 0; white-space: nowrap; }
@@ -203,10 +210,17 @@ textarea.answer-field { min-height: 170px; resize: vertical; line-height: 1.7; }
 .case-footnote { margin: 0 0 13px; }
 .case-exercise-bridge { font-size: 12px; line-height: 1.8; color: #314d42; margin: 8px 0 13px; padding: 11px 13px; background: #fffdf7; border: 1px dashed #a8b5a5; }
 .case-boundary { font-size: 12px; line-height: 1.8; color: #334e42; border-left: 3px solid var(--green); padding: 9px 12px; background: #f8fbf5; margin: 0; }
+.mdp-case .case-table { min-width: 720px; }
+.mdp-case .case-table th, .mdp-case .case-table td { text-align: left; white-space: nowrap; }
+.mdp-case .case-lab { border-top: 1px solid var(--line); }
+.mdp-case .case-lab > .case-step { padding: 0 4px; }
+.mdp-case .case-step .case-code { white-space: pre; }
+.mdp-case .case-step summary { overflow-wrap: anywhere; }
+.mdp-case .case-step:first-of-type { border-top: 1px solid var(--line); }
 .question-footer { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); margin-top: 42px; padding-top: 20px; }
-.note-item { padding: 25px 0 22px; border-bottom: 1px solid var(--line); }
+.note-item { min-width: 0; max-width: 100%; padding: 25px 0 22px; border-bottom: 1px solid var(--line); }
 .note-number { font: 700 10px var(--mono); color: var(--accent-deep); }
-.note-item .formula { font: 500 clamp(17px, 1.6vw, 21px) var(--serif); margin: 11px 0 9px; white-space: nowrap; }
+.note-item .formula { font: 500 clamp(17px, 1.6vw, 21px) var(--serif); margin: 11px 0 9px; max-width: 100%; overflow-x: auto; overflow-y: hidden; white-space: nowrap; }
 .note-item p:last-child { color: #59665e; font-size: 12px; line-height: 1.75; margin: 0; }
 .reference-foot { margin: 24px 0; color: var(--muted); font-size: 11px; }
 .loading-view, .error-view { padding: 55px; min-height: 320px; }
@@ -250,12 +264,13 @@ textarea.answer-field { min-height: 170px; resize: vertical; line-height: 1.7; }
   .navigation { padding: 14px 0 20px; border-top: 1px solid var(--ink); }
   .nav-inner { position: static; }
   .progress-copy { margin-top: 10px; }
-  .chapter-picker { display: flex; align-items: center; gap: 10px; margin: 8px 0; padding: 0 0 10px; }
-  .chapter-picker .answer-label { flex: none; margin: 0; }
-  .chapter-select { flex: 1; }
+  .chapter-picker { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 7px; margin: 8px 0; padding: 0 0 10px; }
+  .chapter-picker .answer-label { margin: 0; }
+  .chapter-select { width: 100%; }
+  .chapter-permalink { margin: 0; }
   .progress-track { margin-bottom: 9px; }
   .nav-hint { display: block; color: var(--muted); margin: 0 0 8px; font-size: 10px; }
-  #question-nav { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x proximity; }
+  .nav-strip { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x proximity; }
   .nav-group { display: flex; gap: 5px; margin: 0; align-items: center; flex: none; }
   .nav-group-heading { font-size: 10px; white-space: nowrap; margin: 0 5px 0 0; }
   .nav-question { flex: none; width: 43px; height: 41px; border: 1px solid var(--line); justify-content: center; padding: 4px; scroll-snap-align: start; }

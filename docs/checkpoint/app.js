@@ -67,9 +67,21 @@ function rich(tag, className, text) {
   const node = element(tag, className);
   const source = String(text);
   const token = /(?:[GgRrSsVv]_(?:\{[^}]+\}|[A-Za-z0-9]+))|(?:Σ_\{[^}]+\})|(?:γ[²³⁴])|(?:V[01](?:\([AB]\))?)/g;
+  // New chapters can author arbitrary KaTeX using \(inline\) or \[display\].
+  // The old literal mappings remain for the existing chapter's plain prose.
+  const explicit = /\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]/g;
   let cursor = 0;
   while (cursor < source.length) {
     let next = null;
+    explicit.lastIndex = cursor;
+    const explicitMatch = explicit.exec(source);
+    if (explicitMatch) {
+      next = {
+        index: explicitMatch.index, raw: explicitMatch[0],
+        tex: explicitMatch[1] ?? explicitMatch[2],
+        display: explicitMatch[2] !== undefined,
+      };
+    }
     for (const [literal, tex] of FULL_FORMULAE) {
       const index = source.indexOf(literal, cursor);
       if (index !== -1 && (!next || index < next.index ||
@@ -88,10 +100,12 @@ function rich(tag, className, text) {
     }
     if (!next) break;
     if (next.index > cursor) node.append(document.createTextNode(source.slice(cursor, next.index)));
-    const math = element("span", next.full && next.raw.length > 31
+    const math = element("span", next.display || (next.full && next.raw.length > 31)
       ? "inline-math math-equation" : "inline-math");
     if (window.katex) {
-      window.katex.render(next.tex, math, { throwOnError: false, trust: false, strict: "ignore" });
+      window.katex.render(next.tex, math, {
+        throwOnError: false, trust: false, strict: "ignore", displayMode: !!next.display,
+      });
     } else {
       math.textContent = next.raw;
     }
@@ -117,6 +131,21 @@ function append(parent, ...children) {
 
 function own(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key);
+}
+
+function chapterUrl(chapterId, questionId = null) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("chapter", chapterId);
+  if (questionId) url.searchParams.set("question", questionId);
+  else url.searchParams.delete("question");
+  url.hash = "";
+  return url.href;
+}
+
+function updateRoute() {
+  // Replace rather than push: the address is shareable, while Back still
+  // returns to the page the learner visited before opening this checkpoint.
+  window.history.replaceState(null, "", chapterUrl(currentChapterId, state.current));
 }
 
 function loadSaved() {
@@ -269,6 +298,20 @@ async function initialize() {
     }));
     currentChapterId = chapterCatalog.default_chapter_id;
     loadSaved();
+    const route = new URL(window.location.href).searchParams;
+    const requestedChapter = route.get("chapter");
+    if (requestedChapter) {
+      if (chapterCatalog.chapters.some((chapter) => chapter.id === requestedChapter)) {
+        currentChapterId = requestedChapter;
+        state = validChapterState(chapterStates[currentChapterId]) ||
+          { current: "q01", responses: {} };
+      } else {
+        currentChapterId = chapterCatalog.default_chapter_id;
+        state = validChapterState(chapterStates[currentChapterId]) ||
+          { current: "q01", responses: {} };
+        inlineError = "链接中的章节尚未发布，已打开默认章节。";
+      }
+    }
     const [loaded, available] = await Promise.all([
       api(`/api/questions?chapter=${encodeURIComponent(currentChapterId)}`),
       api("/api/config").catch(() => ({ vendor_available: false })),
@@ -278,10 +321,19 @@ async function initialize() {
     }
     data = loaded;
     config = available;
+    const requestedQuestion = route.get("question");
+    if (requestedQuestion) {
+      if (loaded.questions.some((question) => question.id === requestedQuestion)) {
+        state.current = requestedQuestion;
+      } else {
+        inlineError = "链接中的题号不属于本章，已打开当前学习进度。";
+      }
+    }
     if (!loaded.questions.some((question) => question.id === state.current)) {
       state.current = loaded.questions[0].id;
     }
     persist();
+    updateRoute();
     updateChapterHeading();
     dom.loading.hidden = true;
     render();
@@ -296,11 +348,59 @@ async function initialize() {
 function updateChapterHeading() {
   const chapter = chapterCatalog.chapters.find((item) => item.id === currentChapterId);
   if (!chapter) return;
+  const presentation = data.presentation || {};
+  const index = chapterCatalog.chapters.indexOf(chapter) + 1;
   const title = chapter.title.replace(/\s*·.*/, "");
   const accent = document.querySelector(".hero h1 em");
   if (accent) accent.textContent = title;
   const edition = document.querySelector(".edition");
   if (edition) edition.textContent = chapter.reference || title;
+  const eyebrow = document.querySelector(".hero .eyebrow");
+  if (eyebrow) {
+    const signal = element("span", "signal-dot");
+    signal.setAttribute("aria-hidden", "true");
+    eyebrow.replaceChildren(signal, document.createTextNode(
+      ` ${presentation.eyebrow || "本章知识检查"}`));
+  }
+  document.querySelector(".hero-intro").textContent = presentation.intro ||
+    `本章共有 ${data.questions.length} 道题。先回答，再用手算、解释和代码检查理解。`;
+  const stamp = document.querySelector(".hero-stamp");
+  stamp.setAttribute("aria-label", `${data.questions.length} 道题，共 ${data.total_score} 分`);
+  stamp.querySelector(":scope > span").textContent =
+    `${String(index).padStart(2, "0")} / CHECKPOINT`;
+  stamp.querySelector("strong").replaceChildren(
+    document.createTextNode(String(data.questions.length)), element("span", "", "题"));
+  stamp.querySelector("small").textContent = `${data.total_score} 分 · 自定进度`;
+  document.querySelector(".navigation .panel-label span:last-child").textContent =
+    `01—${String(data.questions.length).padStart(2, "0")}`;
+  document.querySelector(".nav-hint").textContent =
+    `左右滑动题号，查看全部 ${data.questions.length} 题 →`;
+  const notes = Array.isArray(presentation.field_notes) ? presentation.field_notes : [];
+  const reference = document.querySelector(".reference");
+  reference.hidden = !notes.length;
+  document.querySelector(".layout").classList.toggle("no-reference", !notes.length);
+  if (notes.length) {
+    const inner = reference.querySelector(".reference-inner");
+    const header = element("div", "panel-label");
+    append(header, element("span", "", "随手可查"), element("span", "", "FIELD NOTES"));
+    inner.replaceChildren(header);
+    for (const note of notes) {
+      const item = element("div", "note-item");
+      item.append(element("span", "note-number", note.label || ""));
+      const formula = element("p", "formula");
+      if (window.katex && note.tex) {
+        window.katex.render(note.tex, formula,
+          { throwOnError: false, trust: false, strict: "ignore" });
+      } else {
+        formula.textContent = note.formula || note.tex || "";
+      }
+      append(item, formula, element("p", "", note.description || ""));
+      inner.append(item);
+    }
+    if (presentation.note_footer) {
+      inner.append(element("p", "reference-foot", presentation.note_footer));
+    }
+  }
   document.title = `${title} · RL 学习检查点`;
 }
 
@@ -311,7 +411,9 @@ function render() {
     if (activeEditor) { activeEditor.destroy(); activeEditor = null; }
     dom.question.hidden = true;
     dom.summary.hidden = false;
-    dom.kicker.textContent = "LEARNING REVIEW / 01";
+    dom.kicker.textContent =
+      `LEARNING REVIEW / ${String(chapterCatalog.chapters.findIndex((item) =>
+        item.id === currentChapterId) + 1).padStart(2, "0")}`;
     dom.status.textContent = "本地学习记录";
     renderSummary();
   } else {
@@ -342,8 +444,13 @@ function renderNavigation() {
   }
   chapterSelect.value = currentChapterId;
   chapterSelect.addEventListener("change", () => selectChapter(chapterSelect.value));
-  append(chapterBlock, chapterLabel, chapterSelect);
+  const chapterLink = element("a", "chapter-permalink", "本章直达链接 ↗");
+  chapterLink.href = chapterUrl(currentChapterId);
+  chapterLink.title = "右键复制链接，可从其他设备打开本章";
+  append(chapterBlock, chapterLabel, chapterSelect, chapterLink);
   dom.nav.append(chapterBlock);
+  const strip = element("div", "nav-strip");
+  dom.nav.append(strip);
   const categories = [...new Set(data.questions.map((question) => question.category))];
   for (const category of categories) {
     const label = CATEGORY_LABELS[category] || category;
@@ -365,7 +472,7 @@ function renderNavigation() {
         element("span", "nav-indicator", complete ? "●" : ""));
       group.append(entry);
     }
-    dom.nav.append(group);
+    strip.append(group);
   }
 }
 
@@ -389,6 +496,7 @@ async function selectChapter(id) {
     }
     view = "question";
     persist();
+    updateRoute();
     updateChapterHeading();
     render();
   } catch (error) {
@@ -407,6 +515,7 @@ function selectQuestion(id) {
   view = "question";
   inlineError = "";
   persist();
+  updateRoute();
   render();
   if (window.innerWidth < 781) dom.question.scrollIntoView({ block: "start" });
 }
@@ -419,6 +528,10 @@ function sectionHeader(question) {
     element("span", "", TYPE_LABELS[question.type] || question.type),
     element("span", "meta-divider", "·"),
     element("span", "", `${question.max_score} 分`));
+  const permalink = element("a", "question-permalink", "本题链接 ↗");
+  permalink.href = chapterUrl(currentChapterId, question.id);
+  permalink.title = "右键复制链接，可直达本章的这道题";
+  heading.append(permalink);
   return heading;
 }
 
@@ -434,8 +547,12 @@ function renderQuestion(question) {
     rich("h2", "question-title", question.title),
     rich("p", "question-prompt", question.prompt));
 
+  if (question.source_note?.text) {
+    fragment.append(element("p", "question-source", `教材依据 · ${question.source_note.text}`));
+  }
   if (data.industry_case && question.id === (data.industry_case_question_id || "q11")) {
-    fragment.append(renderIndustryCase(data.industry_case));
+    fragment.append(data.industry_case.kind === "mdp-planning"
+      ? renderMdpCase(data.industry_case) : renderIndustryCase(data.industry_case));
   }
   if (question.type === "choice") fragment.append(renderChoice(question, answer));
   if (question.type === "numeric") fragment.append(renderNumeric(question, answer));
@@ -513,6 +630,100 @@ function caseTable(labels, rows, className) {
   scroller.append(table);
   wrapper.append(scroller, element("p", "case-scroll-hint", "← 横向滚动表格可看完全部列 →"));
   return wrapper;
+}
+
+function mdpBackup(model) {
+  const { rewards, transitions, policy, values, gamma } = model;
+  const qValues = rewards.map((row, s) => row.map((reward, a) =>
+    reward + gamma * transitions[s][a].reduce(
+      (sum, probability, next) => sum + probability * values[next], 0)));
+  const evaluated = qValues.map((row, s) =>
+    row.reduce((sum, q, a) => sum + policy[s][a] * q, 0));
+  const optimal = qValues.map((row) => Math.max(...row));
+  const actions = qValues.map((row) => row.indexOf(Math.max(...row)));
+  return { qValues, evaluated, optimal, actions };
+}
+
+function renderMdpCase(caseData) {
+  const { model, code_path: source } = caseData;
+  const { states, actions, rewards, transitions, policy, values, gamma } = model;
+  const { qValues, evaluated, optimal, actions: bestActions } = mdpBackup(model);
+  const section = element("section", "industry-case mdp-case");
+  section.setAttribute("aria-label", "合成推荐模型与 verl 源码对照");
+  const header = element("div", "industry-heading");
+  append(header, element("span", "case-eyebrow", "CASE / MODEL PLANNING ↔ SAMPLED TRAINING"),
+    element("h3", "", caseData.title), element("p", "", caseData.scope));
+  section.append(header);
+  const lab = element("div", "case-lab");
+  append(lab, element("span", "case-eyebrow", "CONSTRUCTED / S=2, A=2"),
+    element("h4", "", "① 曝光汇总 → 条件转移 → 一次策略备份"),
+    element("p", "case-disclaimer", caseData.data_notice));
+  lab.append(caseTable(
+    ["当前状态 s", "动作 a", "曝光 n", "去候选 / 留存", "P(s′|s,a)", "R(s,a)", "π(a|s)", "旧 V(s′)"],
+    caseData.rows.map(({ state: s, action: a, exposures, next_counts: counts }) => [
+      states[s], actions[a], exposures, counts.join(" / "),
+      `[${transitions[s][a].join(", ")}]`, rewards[s][a],
+      policy[s][a], `[${values.join(", ")}]`,
+    ]), "mdp-input-table"));
+  append(lab, element("p", "case-batch-note",
+    "固定策略先折叠 Pπ(s′|s)=Σa π(a|s)P(s′|s,a) 和 rπ(s)=Σa π(a|s)R(s,a)，再算 Vnew=rπ+γPπVold。"));
+  const folded = states.map((_, s) => ({
+    row: states.map((__, next) => policy[s].reduce(
+      (sum, probability, a) => sum + probability * transitions[s][a][next], 0)),
+    reward: policy[s].reduce((sum, probability, a) =>
+      sum + probability * rewards[s][a], 0),
+  }));
+  lab.append(caseTable(
+    ["当前状态", "rπ(s)", "Pπ(去候选)", "Pπ(去留存)", "Q(普通)", "Q(激励)", "Vπ 新", "max Q", "贪心动作"],
+    states.map((state, s) => [
+      state, displayedNumber(folded[s].reward),
+      ...folded[s].row.map(displayedNumber),
+      ...qValues[s].map(displayedNumber),
+      displayedNumber(evaluated[s]), displayedNumber(optimal[s]),
+      actions[bestActions[s]],
+    ]), "mdp-output-table"));
+  append(lab, element("p", "case-exercise-bridge",
+    `逐项复算候选：Q普通 = 1 + ${gamma}×(0.5×2+0.5×4) = ${displayedNumber(qValues[0][0])}；`
+    + `Q激励 = 1 + ${gamma}×(0.2×2+0.8×4) = ${displayedNumber(qValues[0][1])}；`
+    + `Vπ新 = 0.75×${displayedNumber(qValues[0][0])} + 0.25×${displayedNumber(qValues[0][1])}`
+    + ` = ${displayedNumber(evaluated[0])}；最优备份取 ${displayedNumber(optimal[0])}。`
+    + "这两组不同答案正是代码题 11 / 12 的检验点。"));
+  section.append(lab);
+
+  const bridge = element("div", "case-lab mdp-source");
+  append(bridge, element("span", "case-eyebrow", `SOURCE TRACE / ${source.project.toUpperCase()} @ ${source.commit}`),
+    element("h4", "", "② 真实工程如何用采样奖励与价值？"),
+    element("p", "case-disclaimer", source.notice));
+  for (const stage of source.stages) {
+    const detail = element("details", "case-step");
+    append(detail, element("summary", "", `${stage.path}:${stage.lines}`),
+      element("p", "", stage.role), element("pre", "case-code", stage.code));
+    bridge.append(detail);
+  }
+  bridge.append(element("h5", "case-drill-title", "构造的小批次：看采样回报，不是表格 Vπ"));
+  bridge.append(element("p", "case-disclaimer", source.batch_note));
+  const trainingRows = source.batch.map(({ id, mask, rm_scores: scores, values: critic }) => {
+    const returns = Array(scores.length).fill(0);
+    let running = 0;
+    for (let t = scores.length - 1; t >= 0; t--) {
+      if (mask[t]) {
+        running = scores[t] + gamma * running;
+        returns[t] = running;
+      }
+    }
+    return [id, `[${mask.join(", ")}]`, `[${scores.join(", ")}]`,
+      `[${critic.join(", ")}]`, `[${returns.map(displayedNumber).join(", ")}]`,
+      `[${returns.map((r, t) => displayedNumber(mask[t] ? r - critic[t] : 0)).join(", ")}]`];
+  });
+  bridge.append(caseTable(
+    ["样本", "response_mask", "rm_scores", "critic values", "原始 returns", "原始 A=returns−values"],
+    trainingRows, "mdp-training-table"));
+  bridge.append(element("p", "case-boundary",
+    "本表是 λ=1、无奖励整形时的手算原始数值；源码还对白化 advantages，"
+    + "且会有其他配置/工具 token 的 mask 分支。模型规划枚举所有动作的后继，"
+    + "verl 此路径使用采样 token 和 critic；不要把两者当成同一段训练代码。"));
+  section.append(bridge);
+  return section;
 }
 
 function renderIndustryCase(caseData) {
@@ -738,7 +949,7 @@ function renderNumeric(question, answer) {
   });
   append(wrapper, label, input,
     element("p", "field-hint", question.answer_type === "list"
-      ? "按 [V₁(A), V₁(B)] 的顺序，用逗号分隔；也可输入 [2.5, 3.75]。"
+      ? "按题目指定的状态顺序，用逗号分隔两个数；也可输入 [2.5, 3.75]。"
       : "允许小数；先手算，再交给程序核对。"));
   wrapper.append(button(busy ? "正在核对…" : "核对答案", "button button-primary",
     () => submitAuto(question, answer.draft), busy));
@@ -786,7 +997,8 @@ async function submitAuto(question, raw) {
   inlineError = "";
   renderQuestion(question);
   try {
-    record(question.id).result = await api("/api/grade", { id: question.id, answer });
+    record(question.id).result = await api("/api/grade",
+      { chapter: currentChapterId, id: question.id, answer });
     persist();
   } catch (error) {
     inlineError = error.message;
@@ -853,7 +1065,8 @@ async function reveal(question, answer) {
   inlineError = "";
   renderQuestion(question);
   try {
-    answer.revealed = await api("/api/reveal", { id: question.id });
+    answer.revealed = await api("/api/reveal",
+      { chapter: currentChapterId, id: question.id });
     persist();
   } catch (error) {
     inlineError = error.message;
@@ -1065,6 +1278,10 @@ function showSummary() {
 }
 
 function topicFor(question) {
+  if (question.review_hint) return question.review_hint;
+  if (currentChapterId !== chapterCatalog.default_chapter_id) {
+    return `回看 ${data.reference || "本章"}：${question.title}。`;
+  }
   if (["q03", "q10"].includes(question.id)) return "回看 EasyRL §2.1.1：马尔可夫性质与状态信息。";
   if (["q01", "q02", "q04", "q05", "q06", "q11"].includes(question.id)) {
     return "回看 §2.2.1：折扣回报与状态价值。";
@@ -1112,6 +1329,7 @@ async function importProgress(file) {
         state.current = loaded.questions[0].id;
       }
       persist();
+      updateRoute();
       updateChapterHeading();
       view = "question";
       inlineError = "";

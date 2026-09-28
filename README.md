@@ -4,7 +4,7 @@ A hands-on learning workspace covering classical reinforcement learning, recomme
 
 ## 在线练习站
 
-访问 [RL Learning Lab](https://yonggodlikean.github.io/rl-learning/checkpoint/)：现有一章 EasyRL §2.1–§2.2.2 的 12 道概念、手算、解释和 Python 代码题。代码用浏览器内 Pyodide Worker 执行公开测试，编辑器支持 Python 高亮、行号、缩进和基础补全。当前章节只用 Python 标准库；不需要安装 NumPy，也不依赖本机 `127.0.0.1` 服务。它是自学站，不是保密考试：静态发布数据包含答案。
+访问 [RL Learning Lab](https://yonggodlikean.github.io/rl-learning/checkpoint/)：现有 EasyRL §2.1–§2.2.2 和 [§2.3 MDP：策略评估与控制](https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=easyrl-2.3) 两章，各 12 道概念、手算、解释和 Python 代码题。§2.3 含两段同步贝尔曼备份代码题、合成推荐曝光矩阵演算，以及明确注明条件分支的 `verl` GAE 真实源码对照；合成数据不是真实用户日志或模型训练结果。代码用浏览器内 Pyodide Worker 执行公开测试，编辑器支持 Python 高亮、行号、缩进和基础补全。当前章节只用 Python 标准库；不需要安装 NumPy，也不依赖本机 `127.0.0.1` 服务。它是自学站，不是保密考试：静态发布数据包含答案。
 
 浏览器进度不会在设备或域名之间自动同步。从旧版本地站迁移：在旧站打开「学习复盘」→「导出学习进度」，再到公开站「学习复盘」→「导入学习进度」。不要清除旧站浏览器存储。
 

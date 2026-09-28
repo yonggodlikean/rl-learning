@@ -14,14 +14,16 @@ MARKER = DOCS / ".rl-learning-generated"
 
 
 def main():
-    subprocess.run(
-        [sys.executable, "-m", "unittest", "-q", "test_server.py", "test_site_build.py"],
-        cwd=HERE, check=True,
-    )
     subprocess.run(["npm", "ci"], cwd=HERE, check=True)
     subprocess.run(["npm", "run", "build:editor"], cwd=HERE, check=True)
     for script in ("app.js", "worker.js"):
         subprocess.run(["node", "--check", script], cwd=HERE, check=True)
+    subprocess.run(
+        [sys.executable, "-m", "unittest", "-q",
+         "test_server.py", "test_site_build.py", "test_mdp.py",
+         "test_browser_multichapter.py", "test_browser_mdp.py"],
+        cwd=HERE, check=True,
+    )
 
     if DOCS.exists() and (DOCS.is_symlink() or not MARKER.is_file()):
         raise RuntimeError("docs/ 已存在且不是本站构建目录；拒绝覆盖")

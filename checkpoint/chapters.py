@@ -19,6 +19,7 @@ exist". Chapter ids are opaque, stable strings chosen by the chapter author.
 """
 
 import bank as _default_bank
+import chapter_mdp
 
 #: Chapter id served when a request omits ``chapter``. Existing behaviour
 #: (no ``chapter`` query field / JSON field) maps to this chapter.
@@ -105,4 +106,9 @@ register_bank(
     DEFAULT_CHAPTER_ID,
     "马尔可夫过程与贝尔曼方程 · EasyRL §2.1–§2.2.2",
     _default_bank,
+)
+register_bank(
+    "easyrl-2.3",
+    "MDP：策略评估与控制 · EasyRL §2.3",
+    chapter_mdp,
 )

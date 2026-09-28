@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 import bank
 import build_site
+import chapter_mdp
 import chapters
 import server
 
@@ -93,7 +94,7 @@ class ChapterApiTests(unittest.TestCase):
             chapters.register_bank("second-chapter", "测试第二章", tiny_bank)
             status, body = self.request("GET", "/api/chapters")
             self.assertEqual(status, 200)
-            self.assertEqual(len(body["chapters"]), 2)
+            self.assertEqual(len(body["chapters"]), 3)
             status, body = self.request("GET", "/api/questions?chapter=second-chapter")
             self.assertEqual(status, 200)
             self.assertEqual(body["total_score"], 1)
@@ -103,8 +104,30 @@ class ChapterApiTests(unittest.TestCase):
             })
             self.assertEqual(status, 200)
             self.assertTrue(body["correct"])
-            self.assertEqual(build_site.export_data()["chapters"][1]["answers"]["q01"]["answer"], 0)
-        self.assertEqual(len(chapters.list_chapters()), 1)
+            self.assertEqual(build_site.export_data()["chapters"][-1]["answers"]["q01"]["answer"], 0)
+        self.assertEqual(len(chapters.list_chapters()), 2)
+
+    def test_real_mdp_chapter_routes_separately(self):
+        status, listing = self.request("GET", "/api/chapters")
+        self.assertEqual(status, 200)
+        self.assertEqual(listing["chapters"][1]["id"], "easyrl-2.3")
+        self.assertEqual(listing["chapters"][1]["total_score"], 100)
+        status, questions = self.request("GET", "/api/questions?chapter=easyrl-2.3")
+        self.assertEqual(status, 200)
+        self.assertEqual(questions, chapter_mdp.public_payload())
+        self.assertEqual(questions["industry_case"]["kind"], "mdp-planning")
+        self.assertNotIn('"_answer"', json.dumps(questions))
+        self.assertEqual(self.request("POST", "/api/grade",
+                                     {"chapter": "easyrl-2.3", "id": "q01", "answer": 1})[1]["score"], 5)
+        self.assertEqual(self.request("POST", "/api/grade",
+                                     {"chapter": "easyrl-2.3", "id": "q01", "answer": 2})[1]["score"], 0)
+        self.assertTrue(self.request("POST", "/api/grade",
+                                     {"chapter": "easyrl-2.3", "id": "q07", "answer": 2.575})[1]["correct"])
+        self.assertEqual(self.request("POST", "/api/reveal",
+                                      {"chapter": "easyrl-2.3", "id": "q11"})[1],
+                         chapter_mdp.reveal("q11"))
+        self.assertEqual(self.request("POST", "/api/reveal",
+                                      {"chapter": "easyrl-2.3", "id": "q09"})[1]["self_assessment"], True)
 
 
 class ExportTests(unittest.TestCase):
@@ -123,6 +146,12 @@ class ExportTests(unittest.TestCase):
             self.assertEqual(chapter["answers"]["q05"]["expected"], 3.25)
             self.assertEqual(chapter["reveals"]["q11"]["reference_solution"],
                              bank.reveal("q11")["reference_solution"])
+            mdp = data["chapters"][1]
+            self.assertEqual(mdp["id"], "easyrl-2.3")
+            self.assertEqual(mdp["answers"]["q01"]["answer"], 1)
+            self.assertEqual(mdp["answers"]["q08"]["expected"], [2.8, 3.9])
+            self.assertEqual(mdp["reveals"]["q12"]["reference_solution"],
+                             chapter_mdp.reveal("q12")["reference_solution"])
 
             html = (site / "index.html").read_text(encoding="utf-8")
             self.assertLess(html.index("./site-data.js"), html.index("./app.js"))

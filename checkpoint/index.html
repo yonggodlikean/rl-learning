@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f2ea">
+  <title>RL 学习检查点 · 马尔可夫过程与贝尔曼方程</title>
+  <link rel="stylesheet" href="./vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./vendor/katex/katex.min.js" defer></script>
+  <script src="./vendor/editor/editor.bundle.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="top-rule" aria-hidden="true"></div>
+  <header class="site-header">
+    <div class="masthead">
+      <span class="brand-mark" aria-hidden="true">∑</span>
+      <span class="brand-name">RL / LEARNING LAB</span>
+      <span class="masthead-separator" aria-hidden="true"></span>
+      <span class="edition">检查点 01 · EasyRL §2.1—§2.2.2</span>
+    </div>
+    <div class="hero">
+      <div>
+        <p class="eyebrow"><span class="signal-dot" aria-hidden="true"></span> 从定义走到可计算</p>
+        <h1>你真的理解<br><em>回报与贝尔曼方程</em>了吗？</h1>
+        <p class="hero-intro">不急着进入 PPO。先用概念判断、手算、解释和两段小代码，确认经典 RL 的第一块地基。</p>
+      </div>
+      <div class="hero-stamp" aria-label="12 道题，共 100 分">
+        <span>01 / FOUNDATION</span>
+        <strong>12<span>题</span></strong>
+        <small>100 分 · 自定进度</small>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout" id="main">
+    <aside class="navigation" aria-label="题目导航">
+      <div class="nav-inner">
+        <div class="panel-label"><span>学习路径</span><span>01—12</span></div>
+        <div class="progress-copy"><strong id="progress-count">0 / 12</strong><span>已完成</span></div>
+        <div class="progress-track" role="progressbar" aria-label="答题进度" aria-valuemin="0" aria-valuemax="12" aria-valuenow="0" id="progress-track"><span id="progress-fill"></span></div>
+        <p class="nav-hint">左右滑动题号，查看全部 12 题 <span aria-hidden="true">→</span></p>
+        <nav id="question-nav" aria-label="全部题目"></nav>
+        <button type="button" class="summary-link" id="summary-button">查看学习复盘 <span aria-hidden="true">↗</span></button>
+      </div>
+    </aside>
+
+    <section class="workspace" aria-label="答题区">
+      <div class="workspace-topline"><span id="workspace-kicker">KNOWLEDGE CHECK / 01</span><span id="workspace-status">准备中</span></div>
+      <div id="loading-view" class="loading-view" role="status">
+        <span class="loading-mark" aria-hidden="true">∴</span>
+        <h2>正在整理题目</h2>
+        <p>检查题库与本地代码运行环境……</p>
+      </div>
+      <div id="error-view" class="error-view" role="alert" hidden>
+        <h2>题目暂时没加载出来</h2>
+        <p id="error-message"></p>
+        <button type="button" class="button button-primary" id="retry-button">重新连接题库</button>
+      </div>
+      <div id="question-view" hidden></div>
+      <div id="summary-view" hidden></div>
+    </section>
+
+    <aside class="reference" aria-label="公式便签">
+      <div class="reference-inner">
+        <div class="panel-label"><span>随手可查</span><span>FIELD NOTES</span></div>
+        <div class="note-item">
+          <span class="note-number">01 / RETURN</span>
+          <p class="formula">G<sub>t</sub> = r<sub>t+1</sub> + γG<sub>t+1</sub></p>
+          <p>从后往前算。第一个奖励不打折，后续奖励每晚一步乘一次 γ。</p>
+        </div>
+        <div class="note-item">
+          <span class="note-number">02 / VALUE</span>
+          <p class="formula">V(s) = E[G<sub>t</sub> | S<sub>t</sub> = s]</p>
+          <p>一次轨迹的回报是样本；状态价值是所有可能轨迹回报的期望。</p>
+        </div>
+        <div class="note-item">
+          <span class="note-number">03 / BELLMAN</span>
+          <p class="formula">V = R + γPV</p>
+          <p>P 的每一行对应一个当前状态，元素是去往各后继状态的概率。</p>
+        </div>
+        <p class="reference-foot">仅覆盖当前阅读进度。遇到尚未学过的算法，可以先跳过。</p>
+      </div>
+    </aside>
+  </main>
+  <footer class="site-footer"><span>RL / LEARNING LAB</span><span>进度只保存在此浏览器；Python 代码在你的浏览器 Worker 中运行。</span></footer>
+</body>
+</html>

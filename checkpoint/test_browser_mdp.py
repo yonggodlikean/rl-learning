@@ -74,6 +74,9 @@ class MdpBrowserTests(TestCase):
                 self.assertIn("7 / 9", page.locator(".rubric").inner_text())
 
                 page.goto(base + "?chapter=easyrl-2.3&question=q08", wait_until="networkidle")
+                for row in ("候选 / 普通：R=1", "候选 / 激励：R=1",
+                            "留存 / 普通：R=2", "留存 / 激励：R=1"):
+                    self.assertIn(row, page.locator(".question-prompt").inner_text())
                 self.assertGreater(page.locator(".question-prompt .katex").count(), 0)
                 page.locator("#numeric-q08").fill("2.575, 3.9")
                 page.get_by_role("button", name="核对答案").click()

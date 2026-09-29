@@ -91,6 +91,17 @@ class MdpBankTests(unittest.TestCase):
                 returns[t] = cumulative
             self.assertEqual(returns, [.25, .5, 1] if batch["id"] == "A" else [.5, 1, 0])
 
+    def test_q08_contains_every_reward_and_transition_without_later_case(self):
+        prompt = mdp._get("q08")["prompt"]
+        model = mdp.MODEL
+        self.assertIn("状态顺序为 [候选, 留存]", prompt)
+        self.assertIn("两行都使用给定的旧 V", prompt)
+        for s, state in enumerate(model["states"]):
+            for a, action in enumerate(model["actions"]):
+                probabilities = ", ".join(f"{p:g}" for p in model["transitions"][s][a])
+                row = f"{state} / {action}：R={model['rewards'][s][a]:g}，P=[{probabilities}]"
+                self.assertIn(row, prompt)
+
     def test_reference_solutions_pass_public_tests_without_mutation(self):
         for qid in ("q11", "q12"):
             question = copy.deepcopy(mdp._get(qid))

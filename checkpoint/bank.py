@@ -858,6 +858,8 @@ def public_question(question):
     elif qtype == "numeric":
         out["answer_type"] = question["answer_type"]
         out["tolerance"] = question["tolerance"]
+        if "answer_count" in question:
+            out["answer_count"] = question["answer_count"]
     elif qtype == "code":
         out["language"] = question["language"]
         out["entry_point"] = question["entry_point"]

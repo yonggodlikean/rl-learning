@@ -1510,14 +1510,18 @@ function renderChoice(question, answer) {
 
 function renderNumeric(question, answer) {
   const wrapper = element("div", "answer-zone");
-  const label = element("label", "answer-label", question.answer_type === "list" ? "输入两个数值" : "输入计算结果");
+  const count = question.answer_count ?? 2;
+  const label = element("label", "answer-label", question.answer_type === "list"
+    ? (count === 2 ? "输入两个数值" : `输入${count}个数值`) : "输入计算结果");
   label.htmlFor = `numeric-${question.id}`;
   const input = element("input", "answer-field numeric-field");
   input.id = label.htmlFor;
   input.type = "text";
   input.autocomplete = "off";
   input.inputMode = "decimal";
-  input.placeholder = question.answer_type === "list" ? "例如：2.5, 3.75" : "例如：3.25";
+  input.placeholder = question.answer_type === "list"
+    ? (count === 2 ? "例如：2.5, 3.75" : `依次输入${count}个数值，用逗号分隔`)
+    : "例如：3.25";
   input.value = typeof answer.draft === "string" ? answer.draft : "";
   input.addEventListener("input", () => {
     answer.draft = input.value;
@@ -1528,7 +1532,7 @@ function renderNumeric(question, answer) {
   });
   append(wrapper, label, input,
     element("p", "field-hint", question.answer_type === "list"
-      ? "按题目指定的状态顺序，用逗号分隔两个数；也可输入 [2.5, 3.75]。"
+      ? `按题目指定的顺序，用逗号分隔${count}个数；也可使用方括号列表。`
       : "允许小数；先手算，再交给程序核对。"));
   wrapper.append(button(busy ? "正在核对…" : "核对答案", "button button-primary",
     () => submitAuto(question, answer.draft), busy));
@@ -1551,7 +1555,8 @@ function parseNumeric(question, raw) {
     return number;
   }
   const pieces = text.replace(/^\s*\[/, "").replace(/\]\s*$/, "").split(/[,，;；\s]+/).filter(Boolean);
-  if (pieces.length !== 2) throw new Error("请按顺序输入两个数，例如 [2.5, 3.75]。");
+  const count = question.answer_count ?? 2;
+  if (pieces.length !== count) throw new Error(`请按顺序输入${count}个数值。`);
   const numbers = pieces.map(Number);
   if (!numbers.every(Number.isFinite)) throw new Error("列表中每一项都必须是有限数值。");
   return numbers;

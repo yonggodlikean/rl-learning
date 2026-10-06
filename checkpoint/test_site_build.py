@@ -68,6 +68,7 @@ class ChapterApiTests(unittest.TestCase):
                                       {"id": "q09", "chapter": 123})[0], 400)
 
     def test_registered_second_chapter_has_isolated_questions_and_answers(self):
+        baseline_count = len(chapters.list_chapters())
         tiny_question = {
             "id": "q01", "type": "choice", "category": "concept",
             "title": "第二章", "prompt": "不同章节可复用 q01 吗？",
@@ -94,7 +95,7 @@ class ChapterApiTests(unittest.TestCase):
             chapters.register_bank("second-chapter", "测试第二章", tiny_bank)
             status, body = self.request("GET", "/api/chapters")
             self.assertEqual(status, 200)
-            self.assertEqual(len(body["chapters"]), 3)
+            self.assertEqual(len(body["chapters"]), baseline_count + 1)
             status, body = self.request("GET", "/api/questions?chapter=second-chapter")
             self.assertEqual(status, 200)
             self.assertEqual(body["total_score"], 1)
@@ -105,7 +106,7 @@ class ChapterApiTests(unittest.TestCase):
             self.assertEqual(status, 200)
             self.assertTrue(body["correct"])
             self.assertEqual(build_site.export_data()["chapters"][-1]["answers"]["q01"]["answer"], 0)
-        self.assertEqual(len(chapters.list_chapters()), 2)
+        self.assertEqual(len(chapters.list_chapters()), baseline_count)
 
     def test_real_mdp_chapter_routes_separately(self):
         status, listing = self.request("GET", "/api/chapters")

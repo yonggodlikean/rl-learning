@@ -126,8 +126,9 @@ class MdpBankTests(unittest.TestCase):
 
     def test_source_paths_when_checkout_present(self):
         here = Path(__file__).resolve().parent
-        root = next((parent for parent in (here.parent, here.parent.parent)
-                     if (parent / "verl").is_dir()), None)
+        root = next((candidate for parent in here.parents[:3]
+                     for candidate in (parent, parent / "external")
+                     if (candidate / "verl/verl/trainer/ppo/core_algos.py").is_file()), None)
         if root is None:
             self.skipTest("external verl checkout not present in public repository")
         for stage in mdp.INDUSTRY_CASE["code_path"]["stages"]:

@@ -9,6 +9,7 @@ import os
 import runpy
 import threading
 import unittest
+from pathlib import Path
 
 import bank
 import server
@@ -84,10 +85,13 @@ class BankTests(unittest.TestCase):
     def test_industry_case_matches_verl_source_when_present(self):
         """The published project need not vendor an unrelated 3rd-party tree."""
         case = bank.public_payload()["industry_case"]
-        source_root = os.path.dirname(HERE)
-        scorer_path = os.path.join(source_root, "verl/verl/utils/reward_score/gsm8k.py")
-        if not os.path.isfile(scorer_path):
+        source_root = next((candidate for parent in Path(HERE).parents[:3]
+                            for candidate in (parent, parent / "external")
+                            if (candidate / "verl/verl/utils/reward_score/gsm8k.py").is_file()),
+                           None)
+        if source_root is None:
             self.skipTest("optional external verl checkout is not present")
+        scorer_path = os.path.join(source_root, "verl/verl/utils/reward_score/gsm8k.py")
         scorer = runpy.run_path(scorer_path)["compute_score"]
         for stage in case["stages"]:
             self.assertTrue(os.path.isfile(os.path.join(source_root, stage["path"])))

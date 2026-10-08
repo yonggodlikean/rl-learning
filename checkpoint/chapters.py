@@ -21,6 +21,7 @@ exist". Chapter ids are opaque, stable strings chosen by the chapter author.
 import bank as _default_bank
 import chapter_mdp
 import chapter_mc
+import chapter_sa
 
 #: Chapter id served when a request omits ``chapter``. Existing behaviour
 #: (no ``chapter`` query field / JSON field) maps to this chapter.
@@ -117,4 +118,9 @@ register_bank(
     chapter_mc.CHAPTER_ID,
     "蒙特卡洛方法 · Zhao 第5章 × EasyRL 第3章",
     chapter_mc,
+)
+register_bank(
+    chapter_sa.CHAPTER_ID,
+    "随机近似 · Zhao 第6章 × EasyRL 对应内容",
+    chapter_sa,
 )

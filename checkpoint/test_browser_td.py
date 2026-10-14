@@ -74,16 +74,16 @@ class TDNumericBrowserTests(TestCase):
         page.get_by_role("radio").nth(0).check()
         page.get_by_role("button", name="提交判断").click()
         page.get_by_text("判断正确", exact=True).wait_for()
-        self.assertEqual(page.locator("#progress-count").inner_text(), "1 / 20")
+        self.assertEqual(page.locator("#progress-count").inner_text(), "1 / 23")
 
         page.goto(url + "q09", wait_until="networkidle")
         page.locator(".numeric-field").fill("2.55")
         page.reload(wait_until="networkidle")
         self.assertEqual(page.locator(".numeric-field").input_value(), "2.55")
-        self.assertEqual(page.locator("#progress-count").inner_text(), "1 / 20")
+        self.assertEqual(page.locator("#progress-count").inner_text(), "1 / 23")
         page.get_by_role("button", name="核对答案").click()
         page.get_by_text("计算正确", exact=True).wait_for()
-        self.assertEqual(page.locator("#progress-count").inner_text(), "2 / 20")
+        self.assertEqual(page.locator("#progress-count").inner_text(), "2 / 23")
 
         for raw in ("NaN", "Infinity", "2.55, 3"):
             page.locator(".numeric-field").fill(raw)
@@ -116,7 +116,7 @@ class TDNumericBrowserTests(TestCase):
         page.get_by_role("button", name="核对答案").click()
         page.get_by_text("计算正确", exact=True).wait_for()
         page.reload(wait_until="networkidle")
-        self.assertEqual(page.locator("#progress-count").inner_text(), "6 / 20")
+        self.assertEqual(page.locator("#progress-count").inner_text(), "6 / 23")
         self.assertLessEqual(page.evaluate(
             "document.documentElement.scrollWidth - innerWidth"), 0)
         self.assertFalse(errors, errors)

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-14T08:07:42Z",
+  "generated_at": "2026-10-14T10:57:03Z",
   "repository": {
     "url": "https://github.com/yonggodlikean/rl-learning",
     "branch": "main"
@@ -634,9 +634,9 @@
       "title": "时序差分方法 · Zhao 第7章 × EasyRL 第3章",
       "reference": "Zhao《Mathematical Foundations of Reinforcement Learning》第7章（印刷页125–150 / PDF页138–163）；EasyRL v1.0.6 §3.3.2–3.3.3、§3.4.1–3.4.3（印刷页54–65 / PDF页62–73）",
       "order": 5,
-      "count": 20,
-      "total_score": 100,
-      "code_count": 4,
+      "count": 23,
+      "total_score": 130,
+      "code_count": 7,
       "source_path": "checkpoint/chapter_td.py",
       "source_url": "https://github.com/yonggodlikean/rl-learning/blob/main/checkpoint/chapter_td.py",
       "checkpoint_url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference",
@@ -820,6 +820,33 @@
           "max_score": 6,
           "entry_point": "epsilon_greedy_probs",
           "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q20"
+        },
+        {
+          "id": "q21",
+          "title": "实现 n-step TD 回报",
+          "type": "code",
+          "category": "coding",
+          "max_score": 10,
+          "entry_point": "n_step_return",
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q21"
+        },
+        {
+          "id": "q22",
+          "title": "实现 GAE 广义优势估计（verl 工业级场景）",
+          "type": "code",
+          "category": "coding",
+          "max_score": 10,
+          "entry_point": "compute_gae",
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q22"
+        },
+        {
+          "id": "q23",
+          "title": "实现 Expected Sarsa Q 值更新",
+          "type": "code",
+          "category": "coding",
+          "max_score": 10,
+          "entry_point": "expected_sarsa_update",
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q23"
         }
       ]
     }
@@ -930,8 +957,8 @@
   ],
   "stats": {
     "chapter_count": 5,
-    "question_count": 82,
-    "code_count": 15,
+    "question_count": 85,
+    "code_count": 18,
     "case_count": 3
   },
   "warnings": []

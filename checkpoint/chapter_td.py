@@ -72,6 +72,15 @@ ONOFF_SOURCE = _source("7.4.2", "141–143", "154–156",
 COMP_SOURCE = _source("7.1.2、7.5", "128–130、145–148", "141–143、158–161",
                       "3.3.2–3.3.3", "54–58", "62–66",
                       "DP bootstraps 不采样，MC 不 bootstraps 采样，TD 既 bootstraps 又采样。")
+GAE_SOURCE = _source("7.5", "145–148", "158–161",
+                     "3.4.3", "63–65", "71–73",
+                     "GAE 将 TD error 指数衰减累加：lambda=0 退化为 TD(0)，lambda=1 退化为 MC。"
+                     "verl/trainer/ppo/core_algos.py compute_gae_advantage_return "
+                     "实现了带 mask 保护的倒序递推。")
+EXPSARSA_SOURCE = _source("7.2.2", "136–137", "149–150",
+                          "3.4.2", "60–62", "68–70",
+                          "Expected Sarsa 用策略期望代替实际下一动作，"
+                          "降低方差且可 off-policy 使用。")
 
 
 def _q(qid, qtype, category, title, prompt, score, goal, source, **extra):
@@ -123,6 +132,51 @@ def epsilon_greedy_probs(q_values, epsilon):
     return probs
 """
 
+_NSTEP_RETURN_SOLUTION = """\
+def n_step_return(rewards, values, t, n, gamma):
+    G = 0.0
+    for k in range(n):
+        idx = t + k
+        if idx >= len(rewards):
+            return G
+        G += (gamma ** k) * rewards[idx]
+    boot_idx = t + n
+    if boot_idx < len(values):
+        G += (gamma ** n) * values[boot_idx]
+    return G
+"""
+
+_GAE_SOLUTION = """\
+def compute_gae(rewards, values, mask, gamma, lam):
+    T = len(rewards)
+    advantages = [0.0] * T
+    returns = [0.0] * T
+    last_gae = 0.0
+    for t in range(T - 1, -1, -1):
+        if mask[t] == 0:
+            last_gae = 0.0
+            continue
+        next_value = 0.0
+        if t < T - 1 and mask[t + 1] == 1:
+            next_value = values[t + 1]
+        delta = rewards[t] + gamma * next_value - values[t]
+        last_gae = delta + gamma * lam * last_gae
+        advantages[t] = last_gae
+        returns[t] = last_gae + values[t]
+    return advantages, returns
+"""
+
+_EXPSARSA_SOLUTION = """\
+def expected_sarsa_update(q, transition, alpha, gamma, epsilon):
+    s, a, r, s_next = transition
+    new_q = [row[:] for row in q]
+    n_actions = len(q[s_next])
+    max_q = max(q[s_next])
+    expected = (1 - epsilon) * max_q + (epsilon / n_actions) * sum(q[s_next])
+    target = r + gamma * expected
+    new_q[s][a] = q[s][a] + alpha * (target - q[s][a])
+    return new_q
+"""
 
 QUESTIONS = [
     _q("q01", "choice", "concept",
@@ -487,10 +541,155 @@ QUESTIONS = [
            {"criterion": "概率之和为 1；只用标准库。", "points": 1},
        ],
        _solution=_EPS_GREEDY_SOLUTION),
+    _q("q21", "code", "coding",
+       "实现 n-step TD 回报",
+       "在机器人导航场景中，传感器每步返回即时奖励和状态价值估计。"
+       "实现 n_step_return(rewards, values, t, n, gamma) 计算从时间步 t 出发的 n-step TD target。"
+       "公式：G_t^{(n)} = sum_{k=0}^{n-1} gamma^k * r_{t+k} + gamma^n * V(s_{t+n})。"
+       "若 t+k 超出 rewards 长度，提前终止累加并返回已累计的部分（不再加 bootstrap 项）。"
+       "若 t+n 未超出 values 长度则加 gamma^n * values[t+n]，否则不加。"
+       "只用标准库。",
+       10, "理解 n-step 统一框架：n=1 退化 TD(0)，n->inf 退化 MC。", NSTEP_SOURCE,
+       language="python", entry_point="n_step_return",
+       starter_code=(
+           "def n_step_return(rewards, values, t, n, gamma):\n"
+           "    G = 0.0\n"
+           "    # 累加 n 步折扣奖励，再加 bootstrap 项\n"
+           "    pass\n"
+       ),
+       tests=[
+           {"name": "basic_2step", "description": "rewards=[1,2,5], values=[0,0,0,10], t=0, n=2, gamma=0.9 -> 1+0.9*2=2.8。",
+            "code": ("r = n_step_return([1.0, 2.0, 5.0], [0.0, 0.0, 0.0, 10.0], 0, 2, 0.9)\n"
+                     "assert abs(r - 2.8) < 1e-9")},
+           {"name": "with_bootstrap", "description": "含 bootstrap 项：rewards=[1,2], values=[0,0,10], t=0, n=2, gamma=0.9 -> 1+0.9*2+0.81*10=10.9。",
+            "code": ("r = n_step_return([1.0, 2.0], [0.0, 0.0, 10.0], 0, 2, 0.9)\n"
+                    "assert abs(r - 10.9) < 1e-9")},
+           {"name": "n_equals_1", "description": "n=1 退化为单步 TD target：r_t + gamma*V(s_{t+1})。",
+            "code": ("r = n_step_return([3.0, 7.0], [0.0, 5.0, 9.0], 0, 1, 0.8)\n"
+                     "assert abs(r - (3.0 + 0.8 * 5.0)) < 1e-9")},
+           {"name": "truncated", "description": "n 超出剩余 rewards 时提前终止。",
+            "code": ("r = n_step_return([1.0, 2.0], [0.0, 0.0, 0.0], 0, 5, 0.9)\n"
+                     "assert abs(r - (1.0 + 0.9 * 2.0)) < 1e-9")},
+           {"name": "start_from_t1", "description": "从 t=1 开始计算。",
+            "code": ("r = n_step_return([1.0, 2.0, 5.0], [0.0, 0.0, 0.0, 10.0], 1, 2, 0.9)\n"
+                     "assert abs(r - (2.0 + 0.9 * 5.0 + 0.81 * 10.0)) < 1e-9")},
+       ],
+       rubric=[
+           {"criterion": "正确累加 n 步折扣奖励 sum gamma^k * r_{t+k}。", "points": 4},
+           {"criterion": "正确添加 bootstrap 项 gamma^n * V(s_{t+n})。", "points": 3},
+           {"criterion": "边界处理：超出长度时提前终止，不加 bootstrap。", "points": 2},
+           {"criterion": "只用标准库。", "points": 1},
+       ],
+       _solution=_NSTEP_RETURN_SOLUTION),
+    _q("q22", "code", "coding",
+       "实现 GAE 广义优势估计（verl 工业级场景）",
+       "在大模型推理 RL（如 verl/PPO）中，奖励极度稀疏——仅在最后一个有效 token 给分。"
+       "Critic 模型为每个 token 估计 V(s_t)，用 GAE 从后往前倒序计算优势。"
+       "实现 compute_gae(rewards, values, mask, gamma, lam) 返回 (advantages, returns)。"
+       "逆序循环 t=T-1,...,0：若 mask[t]==0 则 last_gae 归零并跳过；"
+       "否则 delta = rewards[t] + gamma * next_value - values[t]，"
+       "next_value = values[t+1]（若 t<T-1 且 mask[t+1]==1）否则 0；"
+       "last_gae = delta + gamma * lam * last_gae；"
+       "advantages[t] = last_gae；returns[t] = last_gae + values[t]。"
+       "只用标准库。",
+       10, "理解 GAE 倒序递推与 mask 保护，连接 TD error 与优势估计。", GAE_SOURCE,
+       language="python", entry_point="compute_gae",
+       starter_code=(
+           "def compute_gae(rewards, values, mask, gamma, lam):\n"
+           "    # 逆序循环计算 GAE 优势和回报\n"
+           "    pass\n"
+       ),
+       tests=[
+           {"name": "sparse_reward", "description": "稀疏奖励仅末位为 1，4 个 token，无 padding。",
+            "code": ("adv, ret = compute_gae([0.0, 0.0, 0.0, 1.0], "
+                     "[0.2, 0.4, 0.6, 0.8], [1, 1, 1, 1], 0.9, 0.95)\n"
+                     "assert len(adv) == 4 and len(ret) == 4\n"
+                     "assert abs(adv[3] - (1.0 - 0.8)) < 1e-9")},
+           {"name": "mask_protection", "description": "padding 位置优势为 0 且不传播。",
+            "code": ("adv, ret = compute_gae([0.0, 1.0, 0.0, 0.0], "
+                     "[0.3, 0.6, 0.0, 0.0], [1, 1, 0, 0], 0.5, 0.95)\n"
+                     "assert abs(adv[2]) < 1e-9 and abs(adv[3]) < 1e-9\n"
+                     "assert abs(ret[2]) < 1e-9 and abs(ret[3]) < 1e-9")},
+           {"name": "gae_accumulation", "description": "验证 GAE 累积结构。",
+            "code": ("adv, ret = compute_gae([1.0, 0.0], [0.5, 0.5], [1, 1], 0.9, 0.95)\n"
+                     "d1 = 0.0 + 0.9 * 0.0 - 0.5\n"
+                     "d0 = 1.0 + 0.9 * 0.5 - 0.5\n"
+                     "assert abs(adv[1] - d1) < 1e-9\n"
+                     "assert abs(adv[0] - (d0 + 0.9 * 0.95 * d1)) < 1e-9")},
+           {"name": "returns_eq_adv_plus_v", "description": "returns[t] == advantages[t] + values[t]。",
+            "code": ("adv, ret = compute_gae([0.0, 0.0, 1.0], "
+                     "[0.1, 0.3, 0.5], [1, 1, 1], 0.9, 0.95)\n"
+                     "for i in range(3):\n"
+                     "    assert abs(ret[i] - (adv[i] + [0.1, 0.3, 0.5][i])) < 1e-9")},
+           {"name": "lam_zero_degrades_td0", "description": "lam=0 时 GAE 退化为单步 TD error。",
+            "code": ("adv, ret = compute_gae([1.0, 0.0, 0.0], "
+                     "[0.5, 0.3, 0.1], [1, 1, 1], 0.9, 0.0)\n"
+                     "assert abs(adv[0] - (1.0 + 0.9 * 0.3 - 0.5)) < 1e-9\n"
+                     "assert abs(adv[1] - (0.0 + 0.9 * 0.1 - 0.3)) < 1e-9\n"
+                     "assert abs(adv[2] - (0.0 + 0.0 - 0.1)) < 1e-9")},
+       ],
+       rubric=[
+           {"criterion": "正确逆序循环计算 TD error delta = r + gamma*next_V - V。", "points": 3},
+           {"criterion": "正确累积 GAE：last_gae = delta + gamma*lam*last_gae。", "points": 3},
+           {"criterion": "mask 保护：padding 位置归零且不传播 last_gae。", "points": 2},
+           {"criterion": "returns = advantages + values 正确。", "points": 1},
+           {"criterion": "只用标准库。", "points": 1},
+       ],
+       _solution=_GAE_SOLUTION),
+    _q("q23", "code", "coding",
+       "实现 Expected Sarsa Q 值更新",
+       "在机器人路径规划中，Expected Sarsa 用 epsilon-greedy 策略的期望 Q 值"
+       "代替 Sarsa 中实际采样的下一动作 Q 值，降低方差。"
+       "实现 expected_sarsa_update(q, transition, alpha, gamma, epsilon)。"
+       "transition 是 (s, a, r, s_next)；q 是二维列表 q[s][a]。"
+       "target = r + gamma * E[Q(s_next, A)]，"
+       "其中 E[Q] = (1-epsilon)*max(q[s_next]) + (epsilon/|A|)*sum(q[s_next])。"
+       "返回深拷贝新列表，只更新 q[s][a]，不得原地修改输入。只用标准库。",
+       10, "理解 Expected Sarsa 如何用期望代替采样，连接 Sarsa 和 Q-learning。", EXPSARSA_SOURCE,
+       language="python", entry_point="expected_sarsa_update",
+       starter_code=(
+           "def expected_sarsa_update(q, transition, alpha, gamma, epsilon):\n"
+           "    s, a, r, s_next = transition\n"
+           "    # 计算 E[Q(s_next, A)] 并更新 q[s][a]\n"
+           "    pass\n"
+       ),
+       tests=[
+           {"name": "basic", "description": "q=[[3,0],[6,4]], 转移(0,0,1,1), alpha=0.2, gamma=0.5, eps=0.1。",
+            "code": ("q = [[3.0, 0.0], [6.0, 4.0]]\n"
+                     "r = expected_sarsa_update(q, (0, 0, 1.0, 1), 0.2, 0.5, 0.1)\n"
+                     "exp = 0.9 * 6.0 + 0.05 * (6.0 + 4.0)\n"
+                     "tgt = 1.0 + 0.5 * exp\n"
+                     "assert abs(r[0][0] - (3.0 + 0.2 * (tgt - 3.0))) < 1e-9")},
+           {"name": "eps_zero_is_qlearning", "description": "eps=0 时 target 等价 Q-learning（取 max）。",
+            "code": ("q = [[0.0, 0.0], [1.0, 9.0]]\n"
+                     "r = expected_sarsa_update(q, (0, 0, 0.0, 1), 1.0, 1.0, 0.0)\n"
+                     "assert abs(r[0][0] - 9.0) < 1e-9")},
+           {"name": "eps_one_uniform", "description": "eps=1 时 E[Q] = 均值。",
+            "code": ("q = [[0.0, 0.0], [2.0, 8.0]]\n"
+                     "r = expected_sarsa_update(q, (0, 0, 0.0, 1), 1.0, 1.0, 1.0)\n"
+                     "assert abs(r[0][0] - 5.0) < 1e-9")},
+           {"name": "no_mutation", "description": "不得原地修改输入。",
+            "code": ("q = [[3.0, 0.0], [6.0, 4.0]]\n"
+                     "out = expected_sarsa_update(q, (0, 0, 1.0, 1), 0.2, 0.5, 0.1)\n"
+                     "assert q == [[3.0, 0.0], [6.0, 4.0]] and out is not q and out[0] is not q[0]")},
+           {"name": "three_states", "description": "3 状态 2 动作的正确性。",
+            "code": ("q = [[0.0, 0.0], [0.0, 0.0], [5.0, 1.0]]\n"
+                     "r = expected_sarsa_update(q, (0, 1, 2.0, 2), 0.5, 0.9, 0.2)\n"
+                     "exp = 0.8 * 5.0 + 0.1 * (5.0 + 1.0)\n"
+                     "tgt = 2.0 + 0.9 * exp\n"
+                     "assert abs(r[0][1] - (0.5 * tgt)) < 1e-9")},
+       ],
+       rubric=[
+           {"criterion": "正确计算期望 Q 值 E[Q] = (1-eps)*max + (eps/n)*sum。", "points": 4},
+           {"criterion": "正确用 target = r + gamma*E[Q] 做增量更新。", "points": 3},
+           {"criterion": "深拷贝二维列表，不修改输入。", "points": 2},
+           {"criterion": "只用标准库。", "points": 1},
+       ],
+       _solution=_EXPSARSA_SOLUTION),
 ]
 
 TOTAL_SCORE = sum(q["max_score"] for q in QUESTIONS)
-assert TOTAL_SCORE == 100, "question bank must total 100 points"
+assert TOTAL_SCORE == 130, "question bank must total 130 points"
 
 SCORING = {
     "objective": sum(q["max_score"] for q in QUESTIONS if q["grading_mode"] == "auto"),

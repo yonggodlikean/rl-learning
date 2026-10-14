@@ -1,0 +1,14 @@
+{
+  "repository_url": "https://github.com/yonggodlikean/rl-learning",
+  "branch": "main",
+  "checkpoint_base_url": "https://yonggodlikean.github.io/rl-learning/checkpoint/",
+  "domains": [
+    {"id": "classic_rl", "title": "经典强化学习", "path": "classic_rl"},
+    {"id": "recommender", "title": "推荐系统", "path": "recommender"},
+    {"id": "rlhf", "title": "RLHF 对齐", "path": "rlhf"},
+    {"id": "quant_rl", "title": "量化强化学习", "path": "quant_rl"},
+    {"id": "post_training", "title": "后训练", "path": "post_training"},
+    {"id": "papers", "title": "论文精读", "path": "papers"},
+    {"id": "reports", "title": "研究报告", "path": "reports"}
+  ]
+}

@@ -1,0 +1,1569 @@
+
+========================= PDF PAGE 138 =========================
+Chapter 7
+Temporal-Di↵erence Methods
+Chapter 2:
+Bellman Equation
+Chapter 3:
+Bellman Optimality 
+Equation
+Chapter 4:
+Value Iteration & 
+Policy Iteration
+Chapter 5: 
+Monte Carlo 
+Methods
+Chapter 7:
+Temporal-Difference 
+Methods
+Chapter 8:
+Value Function 
+Methods
+Chapter 9:
+Policy Gradient 
+Methods
+Chapter 10:
+Actor-Critic 
+Methods
+Chapter 6:
+Stochastic 
+Approximation
+with model
+to
+without model
+tabular representation
+to
+function representation
+Fundamental tools
+Algorithms/Methods
+Chapter 1:
+Basic Concepts
+policy-based
+plus
+value-based
+Figure 7.1: Where we are in this book.
+This chapter introduces temporal-di↵erence (TD) methods for reinforcement learning.
+Similar to Monte Carlo (MC) learning, TD learning is also model-free, but it has some
+advantages due to its incremental form. With the preparation in Chapter 6, readers will
+not feel alarmed when seeing TD learning algorithms. In fact, TD learning algorithms can
+be viewed as special stochastic algorithms for solving the Bellman or Bellman optimality
+equations.
+Since this chapter introduces quite a few TD algorithms, we ﬁrst overview these
+algorithms and clarify the relationships between them.
+⇧
+Section 7.1 introduces the most basic TD algorithm, which can estimate the state
+125
+
+========================= PDF PAGE 139 =========================
+7.1. TD learning of state values
+values of a given policy.
+It is important to understand this basic algorithm ﬁrst
+before studying the other TD algorithms.
+⇧
+Section 7.2 introduces the Sarsa algorithm, which can estimate the action values of a
+given policy. This algorithm can be combined with a policy improvement step to ﬁnd
+optimal policies. The Sarsa algorithm can be easily obtained from the TD algorithm
+in Section 7.1 by replacing state value estimation with action value estimation.
+⇧
+Section 7.3 introduces the n-step Sarsa algorithm, which is a generalization of the
+Sarsa algorithm. It will be shown that Sarsa and MC learning are two special cases
+of n-step Sarsa.
+⇧
+Section 7.4 introduces the Q-learning algorithm, which is one of the most classic
+reinforcement learning algorithms. While the other TD algorithms aim to solve the
+Bellman equation of a given policy, Q-learning aims to directly solve the Bellman
+optimality equation to obtain optimal policies.
+⇧
+Section 7.5 compares the TD algorithms introduced in this chapter and provides a
+uniﬁed point of view.
+7.1
+TD learning of state values
+TD learning often refers to a broad class of reinforcement learning algorithms. For ex-
+ample, all the algorithms introduced in this chapter fall into the scope of TD learning.
+However, TD learning in this section speciﬁcally refers to a classic algorithm for estimat-
+ing state values.
+7.1.1
+Algorithm description
+Given a policy ⇡, our goal is to estimate v⇡(s) for all s 2 S. Suppose that we have
+some experience samples (s0, r1, s1, . . . , st, rt+1, st+1, . . . ) generated following ⇡. Here, t
+denotes the time step. The following TD algorithm can estimate the state values using
+these samples:
+vt+1(st) = vt(st) −↵t(st)
+h
+vt(st) −
+9
+rt+1 + γvt(st+1)
+:i
+,
+(7.1)
+vt+1(s) = vt(s),
+for all s 6= st,
+(7.2)
+where t = 0, 1, 2, . . . . Here, vt(st) is the estimate of v⇡(st) at time t; ↵t(st) is the learning
+rate for st at time t.
+It should be noted that, at time t, only the value of the visited state st is updated. The
+values of the unvisited states s 6= st remain unchanged as shown in (7.2). Equation (7.2)
+is often omitted for simplicity, but it should be kept in mind because the algorithm would
+be mathematically incomplete without this equation.
+126
+
+========================= PDF PAGE 140 =========================
+7.1. TD learning of state values
+Readers who see the TD learning algorithm for the ﬁrst time may wonder why it
+is designed like this.
+In fact, it can be viewed as a special stochastic approximation
+algorithm for solving the Bellman equation. To see that, ﬁrst recall that the deﬁnition of
+the state value is
+v⇡(s) = E
+⇥
+Rt+1 + γGt+1|St = s
+⇤
+,
+s 2 S.
+(7.3)
+We can rewrite (7.3) as
+v⇡(s) = E
+⇥
+Rt+1 + γv⇡(St+1)|St = s
+⇤
+,
+s 2 S.
+(7.4)
+That is because E[Gt+1|St = s] = P
+a ⇡(a|s) P
+s0 p(s0|s, a)v⇡(s0) = E[v⇡(St+1)|St = s].
+Equation (7.4) is another expression of the Bellman equation. It is sometimes called the
+Bellman expectation equation.
+The TD algorithm can be derived by applying the Robbins-Monro algorithm (Chap-
+ter 6) to solve the Bellman equation in (7.4). Interested readers can check the details in
+Box 7.1.
+Box 7.1: Derivation of the TD algorithm
+We next show that the TD algorithm in (7.1) can be obtained by applying the
+Robbins-Monro algorithm to solve (7.4).
+For state st, we deﬁne a function as
+g(v⇡(st)) .= v⇡(st) −E
+⇥
+Rt+1 + γv⇡(St+1)|St = st
+⇤
+.
+Then, (7.4) is equivalent to
+g(v⇡(st)) = 0.
+Our goal is to solve the above equation to obtain v⇡(st) using the Robbins-Monro
+algorithm. Since we can obtain rt+1 and st+1, which are the samples of Rt+1 and
+St+1, the noisy observation of g(v⇡(st)) that we can obtain is
+˜g(v⇡(st)) = v⇡(st) −
+⇥
+rt+1 + γv⇡(st+1)
+⇤
+=
+⇣
+v⇡(st) −E
+⇥
+Rt+1 + γv⇡(St+1)|St = st
+⇤⌘
+|
+{z
+}
+g(v⇡(st))
++
+⇣
+E
+⇥
+Rt+1 + γv⇡(St+1)|St = st
+⇤
+−
+⇥
+rt+1 + γv⇡(st+1)
+⇤⌘
+|
+{z
+}
+⌘
+.
+127
+
+========================= PDF PAGE 141 =========================
+7.1. TD learning of state values
+Therefore, the Robbins-Monro algorithm (Section 6.2) for solving g(v⇡(st)) = 0 is
+vt+1(st) = vt(st) −↵t(st)˜g(vt(st))
+= vt(st) −↵t(st)
+⇣
+vt(st) −
+⇥
+rt+1 + γv⇡(st+1)
+⇤⌘
+,
+(7.5)
+where vt(st) is the estimate of v⇡(st) at time t, and ↵t(st) is the learning rate.
+The algorithm in (7.5) has a similar expression to that of the TD algorithm in
+(7.1).
+The only di↵erence is that the right-hand side of (7.5) contains v⇡(st+1),
+whereas (7.1) contains vt(st+1). That is because (7.5) is designed to merely estimate
+the state value of st by assuming that the state values of the other states are already
+known. If we would like to estimate the state values of all the states, then v⇡(st+1) on
+the right-hand side should be replaced with vt(st+1). Then, (7.5) is exactly the same
+as (7.1). However, can such a replacement still ensure convergence? The answer is
+yes, and it will be proven later in Theorem 7.1.
+7.1.2
+Property analysis
+Some important properties of the TD algorithm are discussed as follows.
+First, we examine the expression of the TD algorithm more closely. In particular,
+(7.1) can be described as
+vt+1(st)
+| {z }
+new estimate
+=
+vt(st)
+| {z }
+current estimate
+−↵t(st)
+⇥
+TD error δt
+z
+}|
+{
+vt(st) −
+9
+rt+1 + γvt(st+1)
+|
+{z
+}
+TD target ¯vt
+: ⇤
+,
+(7.6)
+where
+¯vt .= rt+1 + γvt(st+1)
+is called the TD target and
+δt .= v(st) −¯vt = vt(st) −(rt+1 + γvt(st+1))
+is called the TD error. It can be seen that the new estimate vt+1(st) is a combination of
+the current estimate vt(st) and the TD error δt.
+⇧
+Why is ¯vt called the TD target?
+This is because ¯vt is the target value that the algorithm attempts to drive v(st) to.
+To see that, subtracting ¯vt from both sides of (7.6) gives
+vt+1(st) −¯vt =
+⇥
+vt(st) −¯vt
+⇤
+−↵t(st)
+⇥
+vt(st) −¯vt
+⇤
+= [1 −↵t(st)]
+⇥
+vt(st) −¯vt
+⇤
+.
+128
+
+========================= PDF PAGE 142 =========================
+7.1. TD learning of state values
+Taking the absolute values of both sides of the above equation gives
+|vt+1(st) −¯vt| = |1 −↵t(st)||vt(st) −¯vt|.
+Since ↵t(st) is a small positive number, we have 0 < 1 −↵t(st) < 1. It then follows
+that
+|vt+1(st) −¯vt| < |vt(st) −¯vt|.
+The above inequality is important because it indicates that the new value vt+1(st) is
+closer to ¯vt than the old value vt(st). Therefore, this algorithm mathematically drives
+vt(st) toward ¯vt. This is why ¯vt is called the TD target.
+⇧
+What is the interpretation of the TD error?
+First, this error is called temporal-di↵erence because δt = vt(st) −(rt+1 + γvt(st+1))
+reﬂects the discrepancy between two time steps t and t + 1. Second, the TD error is
+zero in the expectation sense when the state value estimate is accurate. To see that,
+when vt = v⇡, the expected value of the TD error is
+E[δt|St = st] = E
+⇥
+v⇡(St) −(Rt+1 + γv⇡(St+1))|St = st
+⇤
+= v⇡(st) −E
+⇥
+Rt+1 + γv⇡(St+1)|St = st
+⇤
+= 0.
+(due to (7.3))
+Therefore, the TD error reﬂects not only the discrepancy between two time steps but
+also, more importantly, the discrepancy between the estimate vt and the true state
+value v⇡.
+On a more abstract level, the TD error can be interpreted as the innovation, which
+indicates new information obtained from the experience sample (st, rt+1, st+1). The
+fundamental idea of TD learning is to correct our current estimate of the state val-
+ue based on the newly obtained information.
+Innovation is fundamental in many
+estimation problems such as Kalman ﬁltering [33,34].
+Second, the TD algorithm in (7.1) can only estimate the state values of a given policy.
+To ﬁnd optimal policies, we still need to further calculate the action values and then
+conduct policy improvement. This will be introduced in Section 7.2. Nevertheless, the
+TD algorithm introduced in this section is very basic and important for understanding
+the other algorithms in this chapter.
+Third, while both TD learning and MC learning are model-free, what are their ad-
+vantages and disadvantages? The answers are summarized in Table 7.1.
+129
+
+========================= PDF PAGE 143 =========================
+7.1. TD learning of state values
+TD learning
+MC learning
+Incremental:
+TD learning is incremen-
+tal. It can update the state/action values
+immediately after receiving an experience
+sample.
+Non-incremental:
+MC learning is non-
+incremental. It must wait until an episode
+has been completely collected. That is be-
+cause it must calculate the discounted re-
+turn of the episode.
+Continuing tasks: Since TD learning is in-
+cremental, it can handle both episodic and
+continuing tasks.
+Continuing tasks may
+not have terminal states.
+Episodic tasks: Since MC learning is non-
+incremental, it can only handle episodic
+tasks where the episodes terminate after a
+ﬁnite number of steps.
+Bootstrapping:
+TD learning bootstraps
+because the update of a state/action val-
+ue relies on the previous estimate of this
+value. As a result, TD learning requires
+an initial guess of the values.
+Non-bootstrapping: MC is not bootstrap-
+ping because it can directly estimate s-
+tate/action values without initial guesses.
+Low estimation variance: The estimation
+variance of TD is lower than that of M-
+C because it involves fewer random vari-
+ables.
+For instance, to estimate an ac-
+tion value q⇡(st, at), Sarsa merely requires
+the samples of three random variables:
+Rt+1, St+1, At+1.
+High estimation variance: The estimation
+variance of MC is higher since many ran-
+dom variables are involved. For example,
+to estimate q⇡(st, at), we need samples of
+Rt+1+γRt+2+γ2Rt+3+. . . . Suppose that
+the length of each episode is L. Assume
+that each state has the same number of
+actions as |A|. Then, there are |A|L pos-
+sible episodes following a soft policy. If we
+merely use a few episodes to estimate, it
+is not surprising that the estimation vari-
+ance is high.
+Table 7.1: A comparison between TD learning and MC learning.
+7.1.3
+Convergence analysis
+The convergence analysis of the TD algorithm in (7.1) is given below.
+Theorem 7.1 (Convergence of TD learning). Given a policy ⇡, by the TD algorithm in
+(7.1), vt(s) converges almost surely to v⇡(s) as t ! 1 for all s 2 S if P
+t ↵t(s) = 1 and
+P
+t ↵2
+t(s) < 1 for all s 2 S.
+Some remarks about ↵t are given below. First, the condition of P
+t ↵t(s) = 1 and
+P
+t ↵2
+t(s) < 1 must be valid for all s 2 S. Note that, at time t, ↵t(s) > 0 if s is being
+visited and ↵t(s) = 0 otherwise. The condition P
+t ↵t(s) = 1 requires the state s to
+be visited an inﬁnite (or suﬃciently many) number of times. This requires either the
+condition of exploring starts or an exploratory policy so that every state-action pair can
+possibly be visited many times. Second, the learning rate ↵t is often selected as a small
+130
+
+========================= PDF PAGE 144 =========================
+7.1. TD learning of state values
+positive constant in practice. In this case, the condition that P
+t ↵2
+t(s) < 1 is no longer
+valid. When ↵is constant, it can still be shown that the algorithm converges in the sense
+of expectation [24, Section 1.5].
+Box 7.2: Proof of Theorem 7.1
+We prove the convergence based on Theorem 6.3 in Chapter 6. To do that, we need
+ﬁrst to construct a stochastic process as that in Theorem 6.3. Consider an arbitrary
+state s 2 S. At time t, it follows from the TD algorithm in (7.1) that
+vt+1(s) = vt(s) −↵t(s)
+⇣
+vt(s) −(rt+1 + γvt(st+1))
+⌘
+,
+if s = st,
+(7.7)
+or
+vt+1(s) = vt(s),
+if s 6= st.
+(7.8)
+The estimation error is deﬁned as
+∆t(s) .= vt(s) −v⇡(s),
+where v⇡(s) is the state value of s under policy ⇡. Deducting v⇡(s) from both sides
+of (7.7) gives
+∆t+1(s) = (1 −↵t(s))∆t(s) + ↵t(s)(rt+1 + γvt(st+1) −v⇡(s)
+|
+{z
+}
+⌘t(s)
+)
+= (1 −↵t(s))∆t(s) + ↵t(s)⌘t(s),
+s = st.
+(7.9)
+Deducting v⇡(s) from both sides of (7.8) gives
+∆t+1(s) = ∆t(s) = (1 −↵t(s))∆t(s) + ↵t(s)⌘t(s),
+s 6= st,
+whose expression is the same as that of (7.9) except that ↵t(s) = 0 and ⌘t(s) = 0.
+Therefore, regardless of whether s = st, we obtain the following uniﬁed expression:
+∆t+1(s) = (1 −↵t(s))∆t(s) + ↵t(s)⌘t(s).
+This is the process in Theorem 6.3. Our goal is to show that the three conditions in
+Theorem 6.3 are satisﬁed and hence the process converges.
+The ﬁrst condition is valid as assumed in Theorem 7.1. We next show that the
+second condition is valid. That is, kE[⌘t(s)|Ht]k1 γk∆t(s)k1 for all s 2 S. Here,
+Ht represents the historical information (see the deﬁnition in Theorem 6.3). Due to
+the Markovian property, ⌘t(s) = rt+1 +γvt(st+1)−v⇡(s) or ⌘t(s) = 0 does not depend
+131
+
+========================= PDF PAGE 145 =========================
+7.1. TD learning of state values
+on the historical information once s is given. As a result, we have E[⌘t(s)|Ht] =
+E[⌘t(s)]. For s 6= st, we have ⌘t(s) = 0. Then, it is trivial to see that
+|E[⌘t(s)]| = 0 γk∆t(s)k1.
+(7.10)
+For s = st, we have
+E[⌘t(s)] = E[⌘t(st)]
+= E[rt+1 + γvt(st+1) −v⇡(st)|st]
+= E[rt+1 + γvt(st+1)|st] −v⇡(st).
+Since v⇡(st) = E[rt+1 + γv⇡(st+1)|st], the above equation implies that
+E[⌘t(s)] = γE[vt(st+1) −v⇡(st+1)|st]
+= γ
+X
+s02S
+p(s0|st)[vt(s0) −v⇡(s0)].
+It follows that
+|E[⌘t(s)]| = γ
+11111
+X
+s02S
+p(s0|st)[vt(s0) −v⇡(s0)]
+11111
+γ
+X
+s02S
+p(s0|st) max
+s02S |vt(s0) −v⇡(s0)|
+= γ max
+s02S |vt(s0) −v⇡(s0)|
+= γkvt(s0) −v⇡(s0)k1
+= γk∆t(s)k1.
+(7.11)
+Therefore, at time t, we know from (7.10) and (7.11) that |E[⌘t(s)]| γk∆t(s)k1 for
+all s 2 S regardless of whether s = st. Thus,
+kE[⌘t(s)]k1 γk∆t(s)k1,
+which is the second condition in Theorem 6.3. Finally, regarding the third condition,
+we have var[⌘t(s)|Ht] = var[rt+1 + γvt(st+1) −v⇡(st)|st] = var[rt+1 + γvt(st+1)|st] for
+s = st and var[⌘t(s)|Ht] = 0 for s 6= st. Since rt+1 is bounded, the third condition
+can be proven without diﬃculty.
+The above proof is inspired by [32].
+132
+
+========================= PDF PAGE 146 =========================
+7.2. TD learning of action values: Sarsa
+7.2
+TD learning of action values: Sarsa
+The TD algorithm introduced in Section 7.1 can only estimate state values. This section
+introduces another TD algorithm called Sarsa that can directly estimate action values.
+Estimating action values is important because it can be combined with a policy improve-
+ment step to learn optimal policies.
+7.2.1
+Algorithm description
+Given a policy ⇡, our goal is to estimate the action values. Suppose that we have some
+experience samples generated following ⇡: (s0, a0, r1, s1, a1, . . . , st, at, rt+1, st+1, at+1, . . . ).
+We can use the following Sarsa algorithm to estimate the action values:
+qt+1(st, at) = qt(st, at) −↵t(st, at)
+h
+qt(st, at) −(rt+1 + γqt(st+1, at+1))
+i
+,
+(7.12)
+qt+1(s, a) = qt(s, a),
+for all (s, a) 6= (st, at),
+where t = 0, 1, 2, . . . and ↵t(st, at) is the learning rate. Here, qt(st, at) is the estimate of
+q⇡(st, at). At time t, only the q-value of (st, at) is updated, whereas the q-values of the
+others remain the same.
+Some important properties of the Sarsa algorithm are discussed as follows.
+⇧
+Why is this algorithm called “Sarsa”? That is because each iteration of the algorithm
+requires (st, at, rt+1, st+1, at+1). Sarsa is an abbreviation for state-action-reward-state-
+action. The Sarsa algorithm was ﬁrst proposed in [35] and its name was coined by
+[3].
+⇧
+Why is Sarsa designed in this way? One may have noticed that Sarsa is similar to the
+TD algorithm in (7.1). In fact, Sarsa can be easily obtained from the TD algorithm
+by replacing state value estimation with action value estimation.
+⇧
+What does Sarsa do mathematically? Similar to the TD algorithm in (7.1), Sarsa
+is a stochastic approximation algorithm for solving the Bellman equation of a given
+policy:
+q⇡(s, a) = E [R + γq⇡(S0, A0)|s, a] ,
+for all (s, a).
+(7.13)
+Equation (7.13) is the Bellman equation expressed in terms of action values. A proof
+is given in Box 7.3.
+133
+
+========================= PDF PAGE 147 =========================
+7.2. TD learning of action values: Sarsa
+Box 7.3: Showing that (7.13) is the Bellman equation
+As introduced in Section 2.8.2, the Bellman equation expressed in terms of action
+values is
+q⇡(s, a) =
+X
+r
+rp(r|s, a) + γ
+X
+s0
+X
+a0
+q⇡(s0, a0)p(s0|s, a)⇡(a0|s0)
+=
+X
+r
+rp(r|s, a) + γ
+X
+s0
+p(s0|s, a)
+X
+a0
+q⇡(s0, a0)⇡(a0|s0).
+(7.14)
+This equation establishes the relationships among the action values. Since
+p(s0, a0|s, a) = p(s0|s, a)p(a0|s0, s, a)
+= p(s0|s, a)p(a0|s0)
+(due to conditional independence)
+.= p(s0|s, a)⇡(a0|s0),
+(7.14) can be rewritten as
+q⇡(s, a) =
+X
+r
+rp(r|s, a) + γ
+X
+s0
+X
+a0
+q⇡(s0, a0)p(s0, a0|s, a).
+By the deﬁnition of the expected value, the above equation is equivalent to (7.13).
+Hence, (7.13) is the Bellman equation.
+⇧
+Is Sarsa convergent? Since Sarsa is the action-value version of the TD algorithm in
+(7.1), the convergence result is similar to Theorem 7.1 and given below.
+Theorem 7.2 (Convergence of Sarsa). Given a policy ⇡, by the Sarsa algorithm in
+(7.12), qt(s, a) converges almost surely to the action value q⇡(s, a) as t ! 1 for all
+(s, a) if P
+t ↵t(s, a) = 1 and P
+t ↵2
+t(s, a) < 1 for all (s, a).
+The proof is similar to that of Theorem 7.1 and is omitted here. The condition of
+P
+t ↵t(s, a) = 1 and P
+t ↵2
+t(s, a) < 1 should be valid for all (s, a). In particular,
+P
+t ↵t(s, a) = 1 requires that every state-action pair must be visited an inﬁnite (or
+suﬃciently many) number of times. At time t, if (s, a) = (st, at), then ↵t(s, a) > 0;
+otherwise, ↵t(s, a) = 0.
+7.2.2
+Optimal policy learning via Sarsa
+The Sarsa algorithm in (7.12) can only estimate the action values of a given policy. To
+ﬁnd optimal policies, we can combine it with a policy improvement step. The combination
+is also often called Sarsa, and its implementation procedure is given in Algorithm 7.1.
+134
+
+========================= PDF PAGE 148 =========================
+7.2. TD learning of action values: Sarsa
+Algorithm 7.1: Optimal policy learning by Sarsa
+Initialization: ↵t(s, a) = ↵> 0 for all (s, a) and all t. ✏2 (0, 1). Initial q0(s, a) for all
+(s, a). Initial ✏-greedy policy ⇡0 derived from q0.
+Goal: Learn an optimal policy that can lead the agent to the target state from an initial
+state s0.
+For each episode, do
+Generate a0 at s0 following ⇡0(s0)
+If st (t = 0, 1, 2, . . . ) is not the target state, do
+Collect an experience sample (rt+1, st+1, at+1) given (st, at): generate rt+1, st+1
+by interacting with the environment; generate at+1 following ⇡t(st+1).
+Update q-value for (st, at):
+qt+1(st, at) = qt(st, at) −↵t(st, at)
+h
+qt(st, at) −(rt+1 + γqt(st+1, at+1))
+i
+Update policy for st:
+⇡t+1(a|st) = 1 −
+✏
+|A(st)|(|A(st)| −1) if a = arg maxa qt+1(st, a)
+⇡t+1(a|st) =
+✏
+|A(st)| otherwise
+st st+1, at at+1
+As shown in Algorithm 7.1, each iteration has two steps. The ﬁrst step is to update
+the q-value of the visited state-action pair. The second step is to update the policy to an
+✏-greedy one. The q-value update step only updates the single state-action pair visited
+at time t. Afterward, the policy of st is immediately updated. Therefore, we do not
+evaluate a given policy suﬃciently well before updating the policy. This is based on the
+idea of generalized policy iteration. Moreover, after the policy is updated, the policy is
+immediately used to generate the next experience sample. The policy here is ✏-greedy so
+that it is exploratory.
+A simulation example is shown in Figure 7.2 to demonstrate the Sarsa algorithm.
+Unlike all the tasks we have seen in this book, the task here aims to ﬁnd an optimal
+path from a speciﬁc starting state to a target state. It does not aim to ﬁnd the optimal
+policies for all states. This task is often encountered in practice where the starting state
+(e.g., home) and the target state (e.g., workplace) are ﬁxed, and we only need to ﬁnd an
+optimal path connecting them. This task is relatively simple because we only need to
+explore the states that are close to the path and do not need to explore all the states.
+However, if we do not explore all the states, the ﬁnal path may be locally optimal rather
+than globally optimal.
+The simulation setup and simulation results are discussed below.
+⇧
+Simulation setup: In this example, all the episodes start from the top-left state and ter-
+minate at the target state. The reward settings are rtarget = 0, rforbidden = rboundary =
+−10, and rother = −1. Moreover, ↵t(s, a) = 0.1 for all t and ✏= 0.1. The initial
+guesses of the action values are q0(s, a) = 0 for all (s, a). The initial policy has a
+135
+
+========================= PDF PAGE 149 =========================
+7.2. TD learning of action values: Sarsa
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+0
+100
+200
+300
+400
+500
+-400
+-200
+0
+Total rewards
+0
+100
+200
+300
+400
+500
+Episode index
+0
+100
+200
+Episode length
+Figure 7.2: An example for demonstrating Sarsa. All the episodes start from the top-left state and
+terminate when reaching the target state (the blue cell). The goal is to ﬁnd an optimal path from the
+starting state to the target state. The reward settings are rtarget = 0, rforbidden = rboundary = −10, and
+rother = −1. The learning rate is ↵= 0.1 and the value of ✏is 0.1. The left ﬁgure shows the ﬁnal policy
+obtained by the algorithm. The right ﬁgures show the total reward and length of every episode.
+uniform distribution: ⇡0(a|s) = 0.2 for all s, a.
+⇧
+Learned policy: The left ﬁgure in Figure 7.2 shows the ﬁnal policy learned by Sarsa.
+As can be seen, this policy can successfully lead to the target state from the starting
+state. However, the policies of some other states may not be optimal. That is because
+the other states are not well explored.
+⇧
+Total reward of each episode: The top-right subﬁgure in Figure 7.2 shows the to-
+tal reward of each episode. Here, the total reward is the non-discounted sum of all
+immediate rewards. As can be seen, the total reward of each episode increases grad-
+ually. That is because the initial policy is not good and hence negative rewards are
+frequently obtained. As the policy becomes better, the total reward increases.
+⇧
+Length of each episode: The bottom-right subﬁgure in Figure 7.2 shows that the
+length of each episode drops gradually. That is because the initial policy is not good
+and may take many detours before reaching the target. As the policy becomes better,
+the length of the trajectory becomes shorter. Notably, the length of an episode may
+increase abruptly (e.g., the 460th episode) and the corresponding total reward also
+drops sharply. That is because the policy is ✏-greedy, and there is a chance for it to
+take non-optimal actions. One way to resolve this problem is to use decaying ✏whose
+value converges to zero gradually.
+Finally, Sarsa also has some variants such as Expected Sarsa. Interested readers may
+check Box 7.4.
+136
+
+========================= PDF PAGE 150 =========================
+7.2. TD learning of action values: Sarsa
+Box 7.4: Expected Sarsa
+Given a policy ⇡, its action values can be evaluated by Expected Sarsa, which is a
+variant of Sarsa. The Expected Sarsa algorithm is
+qt+1(st, at) = qt(st, at) −↵t(st, at)
+h
+qt(st, at) −(rt+1 + γE[qt(st+1, A)])
+i
+,
+qt+1(s, a) = qt(s, a),
+for all (s, a) 6= (st, at),
+where
+E[qt(st+1, A)] =
+X
+a
+⇡t(a|st+1)qt(st+1, a) .= vt(st+1)
+is the expected value of qt(st+1, a) under policy ⇡t.
+The expression of the Ex-
+pected Sarsa algorithm is very similar to that of Sarsa.
+They are di↵erent only
+in terms of their TD targets.
+In particular, the TD target in Expected Sarsa is
+rt+1 +γE[qt(st+1, A)], while that of Sarsa is rt+1 +γqt(st+1, at+1). Since the algorithm
+involves an expected value, it is called Expected Sarsa. Although calculating the
+expected value may increase the computational complexity slightly, it is beneﬁcial
+in the sense that it reduces the estimation variances because it reduces the random
+variables in Sarsa from {st, at, rt+1, st+1, at+1} to {st, at, rt+1, st+1}.
+Similar to the TD learning algorithm in (7.1), Expected Sarsa can be viewed as
+a stochastic approximation algorithm for solving the following equation:
+q⇡(s, a) = E
+h
+Rt+1 + γE[q⇡(St+1, At+1)|St+1]
+111St = s, At = a
+i
+,
+for all s, a.
+(7.15)
+The above equation may look strange at ﬁrst glance. In fact, it is another expression
+of the Bellman equation. To see that, substituting
+E[q⇡(St+1, At+1)|St+1] =
+X
+A0
+q⇡(St+1, A0)⇡(A0|St+1) = v⇡(St+1)
+into (7.15) gives
+q⇡(s, a) = E
+h
+Rt+1 + γv⇡(St+1)|St = s, At = a
+i
+,
+which is clearly the Bellman equation.
+The implementation of Expected Sarsa is similar to that of Sarsa. More details
+can be found in [3,36,37].
+137
+
+========================= PDF PAGE 151 =========================
+7.3. TD learning of action values: n-step Sarsa
+7.3
+TD learning of action values: n-step Sarsa
+This section introduces n-step Sarsa, an extension of Sarsa. We will see that Sarsa and
+MC learning are two extreme cases of n-step Sarsa.
+Recall that the deﬁnition of the action value is
+q⇡(s, a) = E[Gt|St = s, At = a],
+(7.16)
+where Gt is the discounted return satisfying
+Gt = Rt+1 + γRt+2 + γ2Rt+3 + . . . .
+In fact, Gt can also be decomposed into di↵erent forms:
+Sarsa −
+G(1)
+t
+= Rt+1 + γq⇡(St+1, At+1),
+G(2)
+t
+= Rt+1 + γRt+2 + γ2q⇡(St+2, At+2),
+...
+n-step Sarsa −
+G(n)
+t
+= Rt+1 + γRt+2 + · · · + γnq⇡(St+n, At+n),
+...
+MC −
+G(1)
+t
+= Rt+1 + γRt+2 + γ2Rt+3 + γ3Rt+4 . . .
+It should be noted that Gt = G(1)
+t
+= G(2)
+t
+= G(n)
+t
+= G(1)
+t
+, where the superscripts merely
+indicate the di↵erent decomposition structures of Gt.
+Substituting di↵erent decompositions of G(n)
+t
+into q⇡(s, a) in (7.16) results in di↵erent
+algorithms.
+⇧
+When n = 1, we have
+q⇡(s, a) = E[G(1)
+t |s, a] = E[Rt+1 + γq⇡(St+1, At+1)|s, a].
+The corresponding stochastic approximation algorithm for solving this equation is
+qt+1(st, at) = qt(st, at) −↵t(st, at)
+h
+qt(st, at) −(rt+1 + γqt(st+1, at+1))
+i
+,
+which is the Sarsa algorithm in (7.12).
+⇧
+When n = 1, we have
+q⇡(s, a) = E[G(1)
+t
+|s, a] = E[Rt+1 + γRt+2 + γ2Rt+3 + . . . |s, a].
+138
+
+========================= PDF PAGE 152 =========================
+7.3. TD learning of action values: n-step Sarsa
+The corresponding algorithm for solving this equation is
+qt+1(st, at) = gt .= rt+1 + γrt+2 + γ2rt+3 + . . . ,
+where gt is a sample of Gt. In fact, this is the MC learning algorithm, which approx-
+imates the action value of (st, at) using the discounted return of an episode starting
+from (st, at).
+⇧
+For a general value of n, we have
+q⇡(s, a) = E[G(n)
+t |s, a] = E[Rt+1 + γRt+2 + · · · + γnq⇡(St+n, At+n)|s, a].
+The corresponding algorithm for solving the above equation is
+qt+1(st, at) = qt(st, at)
+−↵t(st, at)
+h
+qt(st, at) −
+9
+rt+1 + γrt+2 + · · · + γnqt(st+n, at+n)
+:i
+. (7.17)
+This algorithm is called n-step Sarsa.
+In summary, n-step Sarsa is a more general algorithm because it becomes the (one-
+step) Sarsa algorithm when n = 1 and the MC learning algorithm when n = 1 (by
+setting ↵t = 1).
+To implement the n-step Sarsa algorithm in (7.17), we need the experience samples
+(st, at, rt+1, st+1, at+1, . . . , rt+n, st+n, at+n). Since (rt+n, st+n, at+n) has not been collected
+at time t, we have to wait until time t + n to update the q-value of (st, at). To that end,
+(7.17) can be rewritten as
+qt+n(st, at) = qt+n−1(st, at)
+−↵t+n−1(st, at)
+h
+qt+n−1(st, at) −
+9
+rt+1 + γrt+2 + · · · + γnqt+n−1(st+n, at+n)
+:i
+,
+where qt+n(st, at) is the estimate of q⇡(st, at) at time t + n.
+Since n-step Sarsa includes Sarsa and MC learning as two extreme cases, it is not
+surprising that the performance of n-step Sarsa is between that of Sarsa and MC learning.
+In particular, if n is selected as a large number, n-step Sarsa is close to MC learning:
+the estimate has a relatively high variance but a small bias. If n is selected to be small,
+n-step Sarsa is close to Sarsa: the estimate has a relatively large bias but a low variance.
+Finally, the n-step Sarsa algorithm presented here is merely used for policy evaluation.
+It must be combined with a policy improvement step to learn optimal policies.
+The
+implementation is similar to that of Sarsa and is omitted here. Interested readers may
+check [3, Chapter 7] for a detailed analysis of multi-step TD learning.
+139
+
+========================= PDF PAGE 153 =========================
+7.4. TD learning of optimal action values: Q-learning
+7.4
+TD learning of optimal action values: Q-learning
+In this section, we introduce the Q-learning algorithm, one of the most classic reinforce-
+ment learning algorithms [38,39]. Recall that Sarsa can only estimate the action values of
+a given policy, and it must be combined with a policy improvement step to ﬁnd optimal
+policies. By contrast, Q-learning can directly estimate optimal action values and ﬁnd
+optimal policies.
+7.4.1
+Algorithm description
+The Q-learning algorithm is
+qt+1(st, at) = qt(st, at) −↵t(st, at)
+
+qt(st, at) −
+9
+rt+1 + γ
+max
+a2A(st+1) qt(st+1, a)
+:D
+,
+(7.18)
+qt+1(s, a) = qt(s, a),
+for all (s, a) 6= (st, at),
+where t = 0, 1, 2, . . . . Here, qt(st, at) is the estimate of the optimal action value of (st, at)
+and ↵t(st, at) is the learning rate for (st, at).
+The expression of Q-learning is similar to that of Sarsa.
+They are di↵erent only
+in terms of their TD targets: the TD target of Q-learning is rt+1 + γ maxa qt(st+1, a),
+whereas that of Sarsa is rt+1 + γqt(st+1, at+1). Moreover, given (st, at), Sarsa requires
+(rt+1, st+1, at+1) in every iteration, whereas Q-learning merely requires (rt+1, st+1).
+Why is Q-learning designed as the expression in (7.18), and what does it do mathe-
+matically? Q-learning is a stochastic approximation algorithm for solving the following
+equation:
+q(s, a) = E
+h
+Rt+1 + γ max
+a
+q(St+1, a)
+111St = s, At = a
+i
+.
+(7.19)
+This is the Bellman optimality equation expressed in terms of action values. The proof is
+given in Box 7.5. The convergence analysis of Q-learning is similar to Theorem 7.1 and
+omitted here. More information can be found in [32,39].
+Box 7.5: Showing that (7.19) is the Bellman optimality equation
+By the deﬁnition of expectation, (7.19) can be rewritten as
+q(s, a) =
+X
+r
+p(r|s, a)r + γ
+X
+s0
+p(s0|s, a) max
+a2A(s0) q(s0, a).
+140
+
+========================= PDF PAGE 154 =========================
+7.4. TD learning of optimal action values: Q-learning
+Taking the maximum of both sides of the equation gives
+max
+a2A(s) q(s, a) = max
+a2A(s)
+"X
+r
+p(r|s, a)r + γ
+X
+s0
+p(s0|s, a) max
+a2A(s0) q(s0, a)
+#
+.
+By denoting v(s) .= maxa2A(s) q(s, a), we can rewrite the above equation as
+v(s) = max
+a2A(s)
+"X
+r
+p(r|s, a)r + γ
+X
+s0
+p(s0|s, a)v(s0)
+#
+= max
+⇡
+X
+a2A(s)
+⇡(a|s)
+"X
+r
+p(r|s, a)r + γ
+X
+s0
+p(s0|s, a)v(s0)
+#
+,
+which is clearly the Bellman optimality equation in terms of state values as introduced
+in Chapter 3.
+7.4.2
+O↵-policy vs on-policy
+We next introduce two important concepts: on-policy learning and o↵-policy learning.
+What makes Q-learning slightly special compared to the other TD algorithms is that
+Q-learning is o↵-policy while the others are on-policy.
+Two policies exist in any reinforcement learning task: a behavior policy and a target
+policy. The behavior policy is the one used to generate experience samples. The target
+policy is the one that is constantly updated to converge to an optimal policy. When the
+behavior policy is the same as the target policy, such a learning process is called on-policy.
+Otherwise, when they are di↵erent, the learning process is called o↵-policy.
+The advantage of o↵-policy learning is that it can learn optimal policies based on
+the experience samples generated by other policies, which may be, for example, a policy
+executed by a human operator. As an important case, the behavior policy can be selected
+to be exploratory. For example, if we would like to estimate the action values of all state-
+action pairs, we must generate episodes visiting every state-action pair suﬃciently many
+times. Although Sarsa uses ✏-greedy policies to maintain certain exploration abilities, the
+value of ✏is usually small and hence the exploration ability is limited. By contrast, if
+we can use a policy with a strong exploration ability to generate episodes and then use
+o↵-policy learning to learn optimal policies, the learning eﬃciency would be signiﬁcantly
+increased.
+To determine if an algorithm is on-policy or o↵-policy, we can examine two aspects.
+The ﬁrst is the mathematical problem that the algorithm aims to solve. The second is
+the experience samples required by the algorithm.
+⇧
+Sarsa is on-policy.
+141
+
+========================= PDF PAGE 155 =========================
+7.4. TD learning of optimal action values: Q-learning
+The reason is as follows. Sarsa has two steps in every iteration. The ﬁrst step is to
+evaluate a policy ⇡by solving its Bellman equation. To do that, we need samples
+generated by ⇡. Therefore, ⇡is the behavior policy. The second step is to obtain an
+improved policy based on the estimated values of ⇡. As a result, ⇡is the target policy
+that is constantly updated and eventually converges to an optimal policy. Therefore,
+the behavior policy and the target policy are the same.
+From another point of view, we can examine the samples required by the algorithm.
+The samples required by Sarsa in every iteration include (st, at, rt+1, st+1, at+1). How
+these samples are generated is illustrated below:
+st
+⇡b
+−−−! at
+model
+−−−! rt+1, st+1
+⇡b
+−−−! at+1
+As can be seen, the behavior policy ⇡b is the one that generates at at st and at+1
+at st+1. The Sarsa algorithm aims to estimate the action value of (st, at) of a policy
+denoted as ⇡T, which is the target policy because it is improved in every iteration
+based on the estimated values. In fact, ⇡T is the same as ⇡b because the evaluation
+of ⇡T relies on the samples (rt+1, st+1, at+1), where at+1 is generated following ⇡b. In
+other words, the policy that Sarsa evaluates is the policy used to generate samples.
+⇧
+Q-learning is o↵-policy.
+The fundamental reason is that Q-learning is an algorithm for solving the Bellman
+optimality equation, whereas Sarsa is for solving the Bellman equation of a given
+policy. While solving the Bellman equation can evaluate the associated policy, solving
+the Bellman optimality equation can directly generate the optimal values and optimal
+policies.
+In particular, the samples required by Q-learning in every iteration is (st, at, rt+1, st+1).
+How these samples are generated is illustrated below:
+st
+⇡b
+−−−! at
+model
+−−−! rt+1, st+1
+As can be seen, the behavior policy ⇡b is the one that generates at at st. The Q-learning
+algorithm aims to estimate the optimal action value of (st, at). This estimation process
+relies on the samples (rt+1, st+1).
+The process of generating (rt+1, st+1) does not
+involve ⇡b because it is governed by the system model (or by interacting with the
+environment). Therefore, the estimation of the optimal action value of (st, at) does
+not involve ⇡b and we can use any ⇡b to generate at at st.
+Moreover, the target
+policy ⇡T here is the greedy policy obtained based on the estimated optimal values
+(Algorithm 7.3). The behavior policy does not have to be the same as ⇡T.
+⇧
+MC learning is on-policy. The reason is similar to that of Sarsa. The target policy to
+be evaluated and improved is the same as the behavior policy that generates samples.
+142
+
+========================= PDF PAGE 156 =========================
+7.4. TD learning of optimal action values: Q-learning
+Another concept that may be confused with on-policy/o↵-policy is online/o✏ine.
+Online learning refers to the case where the agent updates the values and policies while
+interacting with the environment. O✏ine learning refers to the case where the agent up-
+dates the values and policies using pre-collected experience data without interacting with
+the environment. If an algorithm is on-policy, then it can be implemented in an online
+fashion, but cannot use pre-collected data generated by other policies. If an algorithm is
+o↵-policy, then it can be implemented in either an online or o✏ine fashion.
+Algorithm 7.2: Optimal policy learning via Q-learning (on-policy version)
+Initialization: ↵t(s, a) = ↵> 0 for all (s, a) and all t. ✏2 (0, 1). Initial q0(s, a) for all
+(s, a). Initial ✏-greedy policy ⇡0 derived from q0.
+Goal: Learn an optimal path that can lead the agent to the target state from an initial
+state s0.
+For each episode, do
+If st (t = 0, 1, 2, . . . ) is not the target state, do
+Collect the experience sample (at, rt+1, st+1) given st: generate at following
+⇡t(st); generate rt+1, st+1 by interacting with the environment.
+Update q-value for (st, at):
+qt+1(st, at) = qt(st, at)−↵t(st, at)
+h
+qt(st, at)−(rt+1 +γ maxa qt(st+1, a))
+i
+Update policy for st:
+⇡t+1(a|st) = 1 −
+✏
+|A(st)|(|A(st)| −1) if a = arg maxa qt+1(st, a)
+⇡t+1(a|st) =
+✏
+|A(st)| otherwise
+Algorithm 7.3: Optimal policy learning via Q-learning (o↵-policy version)
+Initialization: Initial guess q0(s, a) for all (s, a). Behavior policy ⇡b(a|s) for all (s, a).
+↵t(s, a) = ↵> 0 for all (s, a) and all t.
+Goal: Learn an optimal target policy ⇡T for all states from the experience samples
+generated by ⇡b.
+For each episode {s0, a0, r1, s1, a1, r2, . . . } generated by ⇡b, do
+For each step t = 0, 1, 2, . . . of the episode, do
+Update q-value for (st, at):
+qt+1(st, at) = qt(st, at)−↵t(st, at)
+h
+qt(st, at)−(rt+1 +γ maxa qt(st+1, a))
+i
+Update target policy for st:
+⇡T,t+1(a|st) = 1 if a = arg maxa qt+1(st, a)
+⇡T,t+1(a|st) = 0 otherwise
+143
+
+========================= PDF PAGE 157 =========================
+7.4. TD learning of optimal action values: Q-learning
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+0
+100
+200
+300
+400
+500
+-400
+-200
+0
+Total rewards
+0
+100
+200
+300
+400
+500
+Episode index
+0
+100
+200
+Episode length
+Figure 7.3: An example for demonstrating Q-learning. All the episodes start from the top-left state and
+terminate after reaching the target state. The aim is to ﬁnd an optimal path from the starting state to
+the target state. The reward settings are rtarget = 0, rforbidden = rboundary = −10, and rother = −1. The
+learning rate is ↵= 0.1 and the value of ✏is 0.1. The left ﬁgure shows the ﬁnal policy obtained by the
+algorithm. The right ﬁgure shows the total reward and length of every episode.
+7.4.3
+Implementation
+Since Q-learning is o↵-policy, it can be implemented in either an on-policy or o↵-policy
+fashion.
+The on-policy version of Q-learning is shown in Algorithm 7.2. This implementation
+is similar to the Sarsa one in Algorithm 7.1. Here, the behavior policy is the same as the
+target policy, which is an ✏-greedy policy.
+The o↵-policy version is shown in Algorithm 7.3. The behavior policy ⇡b can be any
+policy as long as it can generate suﬃcient experience samples. It is usually favorable when
+⇡b is exploratory. Here, the target policy ⇡T is greedy rather than ✏-greedy since it is
+not used to generate samples and hence is not required to be exploratory. Moreover, the
+o↵-policy version of Q-learning presented here is implemented o✏ine: all the experience
+samples are collected ﬁrst and then processed.
+7.4.4
+Illustrative examples
+We next present examples to demonstrate Q-learning.
+The ﬁrst example is shown in Figure 7.3. It demonstrates on-policy Q-learning. The
+goal here is to ﬁnd an optimal path from a starting state to the target state. The setup
+is given in the caption of Figure 7.3. As can be seen, Q-learning can eventually ﬁnd an
+optimal path. During the learning process, the length of each episode decreases, whereas
+the total reward of each episode increases.
+The second set of examples is shown in Figure 7.4 and Figure 7.5. They demonstrate
+o↵-policy Q-learning. The goal here is to ﬁnd an optimal policy for all the states. The
+reward setting is rboundary = rforbidden = −1, and rtarget = 1. The discount rate is γ = 0.9.
+The learning rate is ↵= 0.1.
+144
+
+========================= PDF PAGE 158 =========================
+7.5. A uniﬁed viewpoint
+⇧
+Ground truth: To verify the e↵ectiveness of Q-learning, we ﬁrst need to know the
+ground truth of the optimal policies and optimal state values. Here, the ground truth
+is obtained by the model-based policy iteration algorithm. The ground truth is given
+in Figures 7.4(a) and (b).
+⇧
+Experience samples: The behavior policy has a uniform distribution: the probability
+of taking any action at any state is 0.2 (Figure 7.4(c)). A single episode with 100,000
+steps is generated (Figure 7.4(d)). Due to the good exploration ability of the behavior
+policy, the episode visits every state-action pair many times.
+⇧
+Learned results: Based on the episode generated by the behavior policy, the ﬁnal
+target policy learned by Q-learning is shown in Figure 7.4(e). This policy is optimal
+because the estimated state value error (root-mean-square error) converges to zero as
+shown in Figure 7.4(f). In addition, one may notice that the learned optimal policy
+is not exactly the same as that in Figure 7.4(a). In fact, there exist multiple optimal
+policies that have the same optimal state values.
+⇧
+Di↵erent initial values: Since Q-learning bootstraps, the performance of the algorithm
+depends on the initial guess for the action values. As shown in Figure 7.4(g), when the
+initial guess is close to the true value, the estimate converges within approximately
+10,000 steps. Otherwise, the convergence requires more steps (Figure 7.4(h)). Nev-
+ertheless, these ﬁgures demonstrate that Q-learning can still converge rapidly even
+though the initial value is not accurate.
+⇧
+Di↵erent behavior policies: When the behavior policy is not exploratory, the learning
+performance drops signiﬁcantly. For example, consider the behavior policies shown
+in Figure 7.5. They are ✏-greedy policies with ✏= 0.5 or 0.1 (the uniform policy in
+Figure 7.4(c) can be viewed as ✏-greedy with ✏= 1). It is shown that, when ✏decreases
+from 1 to 0.5 and then to 0.1, the learning speed drops signiﬁcantly. That is because
+the exploration ability of the policy is weak and hence the experience samples are
+insuﬃcient.
+7.5
+A uniﬁed viewpoint
+Up to now, we have introduced di↵erent TD algorithms such as Sarsa, n-step Sarsa, and
+Q-learning. In this section, we introduce a uniﬁed framework to accommodate all these
+algorithms and MC learning.
+In particular, the TD algorithms (for action value estimation) can be expressed in a
+uniﬁed expression:
+qt+1(st, at) = qt(st, at) −↵t(st, at)[qt(st, at) −¯qt],
+(7.20)
+145
+
+========================= PDF PAGE 159 =========================
+7.5. A uniﬁed viewpoint
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+(a) Optimal policy
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+5.8
+5.6
+6.2
+6.5
+5.8
+6.5
+7.2
+8.0
+7.2
+6.5
+7.2
+8.0
+10.0
+8.0
+7.2
+8.0
+10.0
+10.0
+10.0
+8.0
+7.2
+9.0
+10.0
+9.0
+8.1
+(b) Optimal state value
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+(c) Behavior policy
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+(d) Generated episode
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+(e) Learned policy
+0
+2
+4
+6
+8
+10
+Step in the episode
+104
+0
+2
+4
+6
+8
+State value error
+(f) State value error when q0(s, a) = 0
+0
+2
+4
+6
+8
+10
+Step in the episode
+104
+0
+0.5
+1
+1.5
+2
+2.5
+3
+State value error
+(g) State value error when q0(s, a) = 10
+0
+2
+4
+6
+8
+10
+Step in the episode
+104
+0
+20
+40
+60
+80
+100
+State value error
+(h) State value error when q0(s, a) = 100
+Figure 7.4: Examples for demonstrating o↵-policy learning via Q-learning.
+The optimal policy and
+optimal state values are shown in (a) and (b), respectively.
+The behavior policy and the generated
+episode are shown in (c) and (d), respectively. The estimated policy and the estimation error evolution
+are shown in (e) and (f), respectively. The cases with di↵erent initial values are shown in (g) and (h).
+146
+
+========================= PDF PAGE 160 =========================
+7.5. A uniﬁed viewpoint
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+0
+2
+4
+6
+8
+10
+Step in the episode
+104
+0
+2
+4
+6
+8
+State value error
+(a) ✏= 0.5
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+0
+2
+4
+6
+8
+10
+Step in the episode
+104
+0
+2
+4
+6
+State value error
+(b) ✏= 0.1
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+1
+2
+3
+4
+5
+0
+2
+4
+6
+8
+10
+Step in the episode
+104
+0
+2
+4
+6
+State value error
+(c) ✏= 0.1
+Figure 7.5: The performance of Q-learning drops when the behavior policy is not exploratory. The ﬁgures
+in the left column show the behavior policies. The ﬁgures in the middle column show the generated
+episodes following the corresponding behavior policies. The episode in each example has 100,000 steps.
+The ﬁgures in the right column show the evolution of the root-mean-square error of the estimated state
+values.
+147
+
+========================= PDF PAGE 161 =========================
+7.6. Summary
+Algorithm
+Expression of the TD target ¯qt in (7.20)
+Sarsa
+¯qt = rt+1 + γqt(st+1, at+1)
+n-step Sarsa
+¯qt = rt+1 + γrt+2 + · · · + γnqt(st+n, at+n)
+Q-learning
+¯qt = rt+1 + γ maxa qt(st+1, a)
+Monte Carlo
+¯qt = rt+1 + γrt+2 + γ2rt+3 + . . .
+Algorithm
+Equation to be solved
+Sarsa
+BE: q⇡(s, a) = E [Rt+1 + γq⇡(St+1, At+1)|St = s, At = a]
+n-step Sarsa
+BE: q⇡(s, a) = E[Rt+1 + γRt+2 + · · · + γnq⇡(St+n, At+n)|St = s, At = a]
+Q-learning
+BOE: q(s, a) = E
+⇥
+Rt+1 + γ maxa q(St+1, a)
+11St = s, At = a
+⇤
+Monte Carlo
+BE: q⇡(s, a) = E[Rt+1 + γRt+2 + γ2Rt+3 + . . . |St = s, At = a]
+Table 7.2: A uniﬁed point of view of TD algorithms. Here, BE and BOE denote the Bellman equation
+and Bellman optimality equation, respectively.
+where ¯qt is the TD target. Di↵erent TD algorithms have di↵erent ¯qt. See Table 7.2 for a
+summary. The MC learning algorithm can be viewed as a special case of (7.20): we can
+set ↵t(st, at) = 1 and then (7.20) becomes qt+1(st, at) = ¯qt.
+Algorithm (7.20) can be viewed as a stochastic approximation algorithm for solving
+a uniﬁed equation: q(s, a) = E[¯qt|s, a].
+This equation has di↵erent expressions with
+di↵erent ¯qt. These expressions are summarized in Table 7.2. As can be seen, all of the
+algorithms aim to solve the Bellman equation except Q-learning, which aims to solve the
+Bellman optimality equation.
+7.6
+Summary
+This chapter introduced an important class of reinforcement learning algorithms called
+TD learning. The speciﬁc algorithms that we introduced include Sarsa, n-step Sarsa, and
+Q-learning. All these algorithms can be viewed as stochastic approximation algorithms
+for solving Bellman or Bellman optimality equations.
+The TD algorithms introduced in this chapter, except Q-learning, are used to eval-
+uate a given policy. That is to estimate a given policy’s state/action values from some
+experience samples. Together with policy improvement, they can be used to learn opti-
+mal policies. Moreover, these algorithms are on-policy: the target policy is used as the
+behavior policy to generate experience samples.
+Q-learning is slightly special compared to the other TD algorithms in the sense that
+it is o↵-policy. The target policy can be di↵erent from the behavior policy in Q-learning.
+The fundamental reason why Q-learning is o↵-policy is that Q-learning aims to solve the
+Bellman optimality equation rather than the Bellman equation of a given policy.
+148
+
+========================= PDF PAGE 162 =========================
+7.7. Q&A
+It is worth mentioning that there are some methods that can convert an on-policy
+algorithm to be o↵-policy. Importance sampling is a widely used one [3,40] and will be
+introduced in Chapter 10. Finally, there are some variants and extensions of the TD
+algorithms introduced in this chapter [41–45]. For example, the TD(λ) method provides
+a more general and uniﬁed framework for TD learning. More information can be found
+in [3,20,46].
+7.7
+Q&A
+⇧
+Q: What does the term “TD” in TD learning mean?
+A: Every TD algorithm has a TD error, which represents the discrepancy between the
+new sample and the current estimate. Since this discrepancy is calculated between
+di↵erent time steps, it is called temporal-di↵erence.
+⇧
+Q: What does the term “learning” in TD learning mean?
+A: From a mathematical point of view, “learning” simply means “estimation”. That
+is to estimate state/action values from some samples and then obtain policies based
+on the estimated values.
+⇧
+Q: While Sarsa can estimate the action values of a given policy, how can it be used
+to learn optimal policies?
+A: To obtain an optimal policy, the value estimation process should interact with
+the policy improvement process. That is, after a value is updated, the corresponding
+policy should be updated. Then, the updated policy generates new samples that can
+be used to estimate values again. This is the idea of generalized policy iteration.
+⇧
+Q: Why does Sarsa update policies to be ✏-greedy?
+A: That is because the policy is also used to generate samples for value estimation.
+Hence, it should be exploratory to generate suﬃcient experience samples.
+⇧
+Q: While Theorems 7.1 and 7.2 require that the learning rate ↵t converges to zero
+gradually, why is it often set to be a small constant in practice?
+A: The fundamental reason is that the policy to be evaluated keeps changing (or called
+nonstationary). In particular, a TD learning algorithm like Sarsa aims to estimate
+the action values of a given policy. If the policy is ﬁxed, using a decaying learning
+rate is acceptable. However, in the optimal policy learning process, the policy that
+Sarsa aims to evaluate keeps changing after every iteration.
+We need a constant
+learning rate in this case; otherwise, a decaying learning rate may be too small to
+e↵ectively evaluate policies. Although a drawback of constant learning rates is that
+the value estimate may ﬂuctuate eventually, the ﬂuctuation is neglectable as long as
+the constant learning rate is suﬃciently small.
+149
+
+========================= PDF PAGE 163 =========================
+7.7. Q&A
+⇧
+Q: Should we learn the optimal policies for all states or a subset of the states?
+A: It depends on the task. One may notice that some tasks considered in this chapter
+(e.g., Figure 7.2) do not require ﬁnding the optimal policies for all states. Instead,
+they only need to ﬁnd an optimal path from a given starting state to the target state.
+Such tasks are not demanding in terms of data because the agent does not need to
+visit every state-action pair suﬃciently many times. It, however, must be noted that
+the obtained path is not guaranteed to be optimal. That is because better paths may
+be missed if not all state-action pairs are well explored. Nevertheless, given suﬃcient
+data, we can still ﬁnd a good or locally optimal path.
+⇧
+Q: Why is Q-learning o↵-policy while all the other TD algorithms in this chapter are
+on-policy?
+A: The fundamental reason is that Q-learning aims to solve the Bellman optimality
+equation, whereas the other TD algorithms aim to solve the Bellman equation of a
+given policy. Details can be found in Section 7.4.2.
+⇧
+Q: Why does the o↵-policy version of Q-learning update policies to be greedy instead
+of ✏-greedy?
+A: That is because the target policy is not required to generate experience samples.
+Hence, it is not required to be exploratory.
+150

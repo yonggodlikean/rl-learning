@@ -135,10 +135,13 @@ class RealRegistryTest(unittest.TestCase):
             self.assertNotIn(banned, blob)
         expected_counts = {"easyrl-2.1-2.2.2": 12, "easyrl-2.3": 12,
                            "monte-carlo": 18, "stochastic-approximation": 20,
-                           "temporal-difference": 20}
+                           "temporal-difference": 23}
+        expected_scores = {"easyrl-2.1-2.2.2": 100, "easyrl-2.3": 100,
+                           "monte-carlo": 100, "stochastic-approximation": 100,
+                           "temporal-difference": 130}
         for chapter in data["chapters"]:
             self.assertEqual(chapter["count"], expected_counts[chapter["id"]])
-            self.assertEqual(chapter["total_score"], 100)
+            self.assertEqual(chapter["total_score"], expected_scores[chapter["id"]])
             for q in chapter["questions"]:
                 self.assertEqual(set(q), {"id", "title", "type", "category",
                                           "max_score", "entry_point", "url"})

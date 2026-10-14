@@ -132,6 +132,23 @@ class ChapterApiTests(unittest.TestCase):
 
 
 class ExportTests(unittest.TestCase):
+    def test_numeric_answer_types_match_frontend_contract(self):
+        for chapter in build_site.export_data()["chapters"]:
+            for question in chapter["payload"]["questions"]:
+                if question["type"] != "numeric":
+                    continue
+                with self.subTest(chapter=chapter["id"], question=question["id"]):
+                    self.assertIn(question["answer_type"], ("number", "list"))
+                    answer = chapter["answers"][question["id"]]
+                    self.assertEqual(answer["answer_type"], question["answer_type"])
+                    if question["answer_type"] == "list":
+                        self.assertIsInstance(answer["expected"], list)
+                        self.assertEqual(question.get("answer_count", 2),
+                                         len(answer["expected"]))
+                    else:
+                        self.assertIsInstance(answer["expected"], (int, float))
+                        self.assertNotIsInstance(answer["expected"], bool)
+
     def test_beginner_case_keeps_line_notes_aligned_with_source(self):
         case = bank.public_payload()["industry_case"]
         self.assertEqual(len(case["stages"]), 7)

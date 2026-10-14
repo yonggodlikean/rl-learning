@@ -242,7 +242,7 @@ QUESTIONS = [
        r"\(\gamma=0.9\)，\(\alpha=0.1\)。"
        r"求更新后的 \(v_1(s)\)。结果保留至少 4 位小数。",
        5, "用 TD target 和增量更新公式手算。", TD_SOURCE,
-       answer_type="scalar", tolerance=1e-6, _expected=2.55,
+       answer_type="number", tolerance=1e-6, _expected=2.55,
        feedback_hint="TD target = r+γv(s')=3+0.9×5=7.5；v_1=v_0+α(target−v_0)=2+0.1×5.5=2.55。"),
     _q("q10", "numeric", "calculation",
        "手动做一次 Sarsa 更新",
@@ -250,7 +250,7 @@ QUESTIONS = [
        r"转移 \((s,a,\, r=2.0,\, s',a')\)，\(\gamma=0.8\)，\(\alpha=0.5\)。"
        r"求更新后的 \(q_1(s,a)\)。",
        5, "用 Sarsa 的 TD target 手算增量更新。", SARSA_SOURCE,
-       answer_type="scalar", tolerance=1e-6, _expected=3.1,
+       answer_type="number", tolerance=1e-6, _expected=3.1,
        feedback_hint="target = r+γq(s',a')=2+0.8×4=5.2；q_1=1+0.5×(5.2−1)=3.1。"),
     _q("q11", "numeric", "calculation",
        "手动做一次 Q-learning 更新",
@@ -259,7 +259,7 @@ QUESTIONS = [
        r"转移 \((s,a,\, r=1.0,\, s')\)，\(\gamma=0.5\)，\(\alpha=0.2\)。"
        r"求更新后的 \(q_1(s,a)\)。",
        5, "用 max 选 target 并手算增量更新。", Q_SOURCE,
-       answer_type="scalar", tolerance=1e-6, _expected=3.2,
+       answer_type="number", tolerance=1e-6, _expected=3.2,
        feedback_hint="target = r+γmax q(s',·)=1+0.5×6=4；q_1=3+0.2×(4−3)=3.2。"),
     _q("q12", "numeric", "calculation",
        "计算 n-step TD 回报",
@@ -267,7 +267,7 @@ QUESTIONS = [
        r"2-step TD target 为 \(r_1+\gamma r_2+\gamma^2 v(s_2)\)。"
        r"求该 target 的值。",
        5, "理解 n-step 回报的折扣累加形式。", NSTEP_SOURCE,
-       answer_type="scalar", tolerance=1e-6, _expected=6.85,
+       answer_type="number", tolerance=1e-6, _expected=6.85,
        feedback_hint="1+0.9×2+0.81×5=1+1.8+4.05=6.85。"),
     _q("q13", "numeric", "calculation",
        "ε-greedy 下的动作概率",

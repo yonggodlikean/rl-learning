@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-08T10:48:41Z",
+  "generated_at": "2026-10-14T08:07:42Z",
   "repository": {
     "url": "https://github.com/yonggodlikean/rl-learning",
     "branch": "main"
@@ -628,6 +628,200 @@
           "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=stochastic-approximation&question=q20"
         }
       ]
+    },
+    {
+      "id": "temporal-difference",
+      "title": "时序差分方法 · Zhao 第7章 × EasyRL 第3章",
+      "reference": "Zhao《Mathematical Foundations of Reinforcement Learning》第7章（印刷页125–150 / PDF页138–163）；EasyRL v1.0.6 §3.3.2–3.3.3、§3.4.1–3.4.3（印刷页54–65 / PDF页62–73）",
+      "order": 5,
+      "count": 20,
+      "total_score": 100,
+      "code_count": 4,
+      "source_path": "checkpoint/chapter_td.py",
+      "source_url": "https://github.com/yonggodlikean/rl-learning/blob/main/checkpoint/chapter_td.py",
+      "checkpoint_url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference",
+      "questions": [
+        {
+          "id": "q01",
+          "title": "TD 与 MC 最本质的区别是什么？",
+          "type": "choice",
+          "category": "concept",
+          "max_score": 4,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q01"
+        },
+        {
+          "id": "q02",
+          "title": "TD(0) 是哪个方程的随机近似？",
+          "type": "choice",
+          "category": "concept",
+          "max_score": 4,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q02"
+        },
+        {
+          "id": "q03",
+          "title": "DP、MC、TD 在自举和采样上的区别",
+          "type": "choice",
+          "category": "concept",
+          "max_score": 4,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q03"
+        },
+        {
+          "id": "q04",
+          "title": "MC 与 TD 的偏差和方差",
+          "type": "choice",
+          "category": "concept",
+          "max_score": 4,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q04"
+        },
+        {
+          "id": "q05",
+          "title": "Sarsa 每次更新需要什么数据？",
+          "type": "choice",
+          "category": "concept",
+          "max_score": 4,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q05"
+        },
+        {
+          "id": "q06",
+          "title": "Q-learning 的 TD target 和求解的方程",
+          "type": "choice",
+          "category": "concept",
+          "max_score": 4,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q06"
+        },
+        {
+          "id": "q07",
+          "title": "n-step Sarsa 如何统一 Sarsa 和 MC？",
+          "type": "choice",
+          "category": "concept",
+          "max_score": 4,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q07"
+        },
+        {
+          "id": "q08",
+          "title": "为什么 Q-learning 是 off-policy？",
+          "type": "choice",
+          "category": "concept",
+          "max_score": 4,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q08"
+        },
+        {
+          "id": "q09",
+          "title": "手动做一次 TD(0) 状态值更新",
+          "type": "numeric",
+          "category": "calculation",
+          "max_score": 5,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q09"
+        },
+        {
+          "id": "q10",
+          "title": "手动做一次 Sarsa 更新",
+          "type": "numeric",
+          "category": "calculation",
+          "max_score": 5,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q10"
+        },
+        {
+          "id": "q11",
+          "title": "手动做一次 Q-learning 更新",
+          "type": "numeric",
+          "category": "calculation",
+          "max_score": 5,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q11"
+        },
+        {
+          "id": "q12",
+          "title": "计算 n-step TD 回报",
+          "type": "numeric",
+          "category": "calculation",
+          "max_score": 5,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q12"
+        },
+        {
+          "id": "q13",
+          "title": "ε-greedy 下的动作概率",
+          "type": "numeric",
+          "category": "calculation",
+          "max_score": 5,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q13"
+        },
+        {
+          "id": "q14",
+          "title": "为什么 TD error 在 v = v^π 时期望为零？",
+          "type": "open",
+          "category": "explanation",
+          "max_score": 5,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q14"
+        },
+        {
+          "id": "q15",
+          "title": "对比 Sarsa 和 Q-learning 的更新公式、target 和 on/off-policy",
+          "type": "open",
+          "category": "explanation",
+          "max_score": 5,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q15"
+        },
+        {
+          "id": "q16",
+          "title": "用统一视角解释 n-step Sarsa 如何统一 Sarsa 和 MC",
+          "type": "open",
+          "category": "explanation",
+          "max_score": 5,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q16"
+        },
+        {
+          "id": "q17",
+          "title": "实现 TD(0) 状态值一步更新",
+          "type": "code",
+          "category": "coding",
+          "max_score": 8,
+          "entry_point": "td_update",
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q17"
+        },
+        {
+          "id": "q18",
+          "title": "实现 Sarsa 一步 Q 值更新",
+          "type": "code",
+          "category": "coding",
+          "max_score": 8,
+          "entry_point": "sarsa_update",
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q18"
+        },
+        {
+          "id": "q19",
+          "title": "实现 Q-learning 一步更新",
+          "type": "code",
+          "category": "coding",
+          "max_score": 6,
+          "entry_point": "q_learning_update",
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q19"
+        },
+        {
+          "id": "q20",
+          "title": "实现 ε-greedy 动作概率",
+          "type": "code",
+          "category": "coding",
+          "max_score": 6,
+          "entry_point": "epsilon_greedy_probs",
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q20"
+        }
+      ]
     }
   ],
   "domains": [
@@ -735,9 +929,9 @@
     }
   ],
   "stats": {
-    "chapter_count": 4,
-    "question_count": 62,
-    "code_count": 11,
+    "chapter_count": 5,
+    "question_count": 82,
+    "code_count": 15,
     "case_count": 3
   },
   "warnings": []

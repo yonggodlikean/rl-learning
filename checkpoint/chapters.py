@@ -22,6 +22,7 @@ import bank as _default_bank
 import chapter_mdp
 import chapter_mc
 import chapter_sa
+import chapter_td
 
 #: Chapter id served when a request omits ``chapter``. Existing behaviour
 #: (no ``chapter`` query field / JSON field) maps to this chapter.
@@ -123,4 +124,9 @@ register_bank(
     chapter_sa.CHAPTER_ID,
     "随机近似 · Zhao 第6章 × EasyRL 对应内容",
     chapter_sa,
+)
+register_bank(
+    chapter_td.CHAPTER_ID,
+    "时序差分方法 · Zhao 第7章 × EasyRL 第3章",
+    chapter_td,
 )

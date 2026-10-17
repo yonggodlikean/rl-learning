@@ -465,7 +465,7 @@ QUESTIONS = [
            {"name": "three_states", "description": "3 状态 2 动作的正确性。",
             "code": ("q = [[0.0, 0.0], [0.0, 0.0], [5.0, 1.0]]\n"
                      "r = sarsa_update(q, (0, 1, 3.0, 2, 0), 0.1, 0.9)\n"
-                     "assert abs(r[0][1] - 0.45) < 1e-9")},
+                    "assert abs(r[0][1] - 0.75) < 1e-9")},
        ],
        rubric=[
            {"criterion": "正确计算 Sarsa target = r + γ·q[s_next][a_next] 并增量更新。", "points": 4},

@@ -95,7 +95,7 @@ def main():
         [sys.executable, "-m", "unittest", "-q",
          "test_server.py", "test_site_build.py", "test_mdp.py",
          "test_hub_catalog.py", "test_browser_multichapter.py", "test_browser_mdp.py",
-         "test_browser_td.py"],
+         "test_browser_td.py", "test_vfm.py"],
         cwd=HERE, check=True,
     )
 

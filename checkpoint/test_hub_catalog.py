@@ -21,6 +21,7 @@ import publish_pages  # noqa: E402
 REAL_IDS = [
     "easyrl-2.1-2.2.2", "easyrl-2.3",
     "monte-carlo", "stochastic-approximation", "temporal-difference",
+    "value-function-methods",
 ]
 
 
@@ -135,10 +136,10 @@ class RealRegistryTest(unittest.TestCase):
             self.assertNotIn(banned, blob)
         expected_counts = {"easyrl-2.1-2.2.2": 12, "easyrl-2.3": 12,
                            "monte-carlo": 18, "stochastic-approximation": 20,
-                           "temporal-difference": 23}
+                           "temporal-difference": 23, "value-function-methods": 21}
         expected_scores = {"easyrl-2.1-2.2.2": 100, "easyrl-2.3": 100,
                            "monte-carlo": 100, "stochastic-approximation": 100,
-                           "temporal-difference": 130}
+                           "temporal-difference": 130, "value-function-methods": 108}
         for chapter in data["chapters"]:
             self.assertEqual(chapter["count"], expected_counts[chapter["id"]])
             self.assertEqual(chapter["total_score"], expected_scores[chapter["id"]])

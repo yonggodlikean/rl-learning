@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-14T10:57:03Z",
+  "generated_at": "2026-10-17T10:33:36Z",
   "repository": {
     "url": "https://github.com/yonggodlikean/rl-learning",
     "branch": "main"
@@ -849,6 +849,209 @@
           "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=temporal-difference&question=q23"
         }
       ]
+    },
+    {
+      "id": "value-function-methods",
+      "title": "价值函数方法 · Zhao 第8章 × EasyRL 第6/7章",
+      "reference": "Zhao《Mathematical Foundations of Reinforcement Learning》第8章（印刷页151–190 / PDF页164–203）；EasyRL v1.0.6 第6章与第7章（印刷页93–119 / PDF页101–127）；工作区实验代码：experiments/cartpole-dqn/",
+      "order": 6,
+      "count": 21,
+      "total_score": 108,
+      "code_count": 5,
+      "source_path": "checkpoint/chapter_vfm.py",
+      "source_url": "https://github.com/yonggodlikean/rl-learning/blob/main/checkpoint/chapter_vfm.py",
+      "checkpoint_url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods",
+      "questions": [
+        {
+          "id": "q01",
+          "title": "从表格到神经网络：泛化性与跨状态干扰的权衡",
+          "type": "choice",
+          "category": "concept",
+          "max_score": 4,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q01"
+        },
+        {
+          "id": "q02",
+          "title": "PyTorch 计算图实操：为什么 Target Q 必须用 torch.no_grad()？",
+          "type": "choice",
+          "category": "concept",
+          "max_score": 4,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q02"
+        },
+        {
+          "id": "q03",
+          "title": "致命代码 Bug 诊断：为什么终止状态必须有 (1 - dones) 掩码？",
+          "type": "choice",
+          "category": "concept",
+          "max_score": 4,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q03"
+        },
+        {
+          "id": "q04",
+          "title": "目标网络（Target Network）同步周期的工程权衡",
+          "type": "choice",
+          "category": "concept",
+          "max_score": 4,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q04"
+        },
+        {
+          "id": "q05",
+          "title": "经验回放池（Replay Buffer）的 Warm-up 与容量权衡",
+          "type": "choice",
+          "category": "concept",
+          "max_score": 4,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q05"
+        },
+        {
+          "id": "q06",
+          "title": "Double DQN 在训练监控中的表征与实战诊断",
+          "type": "choice",
+          "category": "concept",
+          "max_score": 4,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q06"
+        },
+        {
+          "id": "q07",
+          "title": "CartPole 满分 500 步的理论折扣回报上限手算",
+          "type": "numeric",
+          "category": "calculation",
+          "max_score": 5,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q07"
+        },
+        {
+          "id": "q08",
+          "title": "CartPole 单步 Bellman Target 与 TD Loss 手算",
+          "type": "numeric",
+          "category": "calculation",
+          "max_score": 5,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q08"
+        },
+        {
+          "id": "q09",
+          "title": "漏写 `(1 - done)` 掩码的数值偏差量化手算",
+          "type": "numeric",
+          "category": "calculation",
+          "max_score": 5,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q09"
+        },
+        {
+          "id": "q10",
+          "title": "Double DQN vs 标准 DQN 目标值实战对比手算",
+          "type": "numeric",
+          "category": "calculation",
+          "max_score": 5,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q10"
+        },
+        {
+          "id": "q11",
+          "title": "Dueling DQN 均值中心化前向张量数值还原手算",
+          "type": "numeric",
+          "category": "calculation",
+          "max_score": 5,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q11"
+        },
+        {
+          "id": "q12",
+          "title": "CartPole 训练中的 \\(\\epsilon\\)-贪心按轮衰减手算",
+          "type": "numeric",
+          "category": "calculation",
+          "max_score": 5,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q12"
+        },
+        {
+          "id": "q13",
+          "title": "【代码审查实战】指出这段 DQN 训练循环中的 3 个致命 Bug",
+          "type": "open",
+          "category": "explanation",
+          "max_score": 6,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q13"
+        },
+        {
+          "id": "q14",
+          "title": "【实验现象复盘】CartPole 训练中 Loss 上升而 Reward 也在上升，如何科学评估策略？",
+          "type": "open",
+          "category": "explanation",
+          "max_score": 6,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q14"
+        },
+        {
+          "id": "q15",
+          "title": "【架构演进剖析】从 DQN 到 Double DQN 与 Dueling DQN 的工程改造精髓",
+          "type": "open",
+          "category": "explanation",
+          "max_score": 6,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q15"
+        },
+        {
+          "id": "q16",
+          "title": "【理论与工程闭环】死亡铁三角在深度强化学习中是如何被这三道防线驯服的？",
+          "type": "open",
+          "category": "explanation",
+          "max_score": 6,
+          "entry_point": null,
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q16"
+        },
+        {
+          "id": "q17",
+          "title": "实现 \\(\\epsilon\\)-贪心动作选择器",
+          "type": "code",
+          "category": "implementation",
+          "max_score": 6,
+          "entry_point": "select_action",
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q17"
+        },
+        {
+          "id": "q18",
+          "title": "实现带 `done` 掩码的 DQN 目标计算函数",
+          "type": "code",
+          "category": "implementation",
+          "max_score": 6,
+          "entry_point": "compute_dqn_targets",
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q18"
+        },
+        {
+          "id": "q19",
+          "title": "实现 Double DQN 交叉解耦目标计算函数",
+          "type": "code",
+          "category": "implementation",
+          "max_score": 6,
+          "entry_point": "compute_ddqn_targets",
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q19"
+        },
+        {
+          "id": "q20",
+          "title": "实现 Dueling DQN 均值中心化前向传播",
+          "type": "code",
+          "category": "implementation",
+          "max_score": 6,
+          "entry_point": "dueling_forward",
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q20"
+        },
+        {
+          "id": "q21",
+          "title": "实现目标网络 Polyak 软更新函数",
+          "type": "code",
+          "category": "implementation",
+          "max_score": 6,
+          "entry_point": "soft_update",
+          "url": "https://yonggodlikean.github.io/rl-learning/checkpoint/?chapter=value-function-methods&question=q21"
+        }
+      ]
     }
   ],
   "domains": [
@@ -956,9 +1159,9 @@
     }
   ],
   "stats": {
-    "chapter_count": 5,
-    "question_count": 85,
-    "code_count": 18,
+    "chapter_count": 6,
+    "question_count": 106,
+    "code_count": 23,
     "case_count": 3
   },
   "warnings": []
